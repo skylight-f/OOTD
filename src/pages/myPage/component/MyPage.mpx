@@ -1,0 +1,230 @@
+<template>
+  <view class="page profile-page">
+    <view class="profile-card">
+      <view class="profile-top">
+        <view class="avatar">SKY</view>
+        <view class="profile-info">
+          <text class="profile-name">Skylight</text>
+          <text class="profile-bio">极简通勤风 · 喜欢低饱和配色和轻层次叠穿</text>
+        </view>
+      </view>
+
+      <view class="profile-stats">
+        <view wx:for="{{stats}}" wx:key="label" class="profile-stat">
+          <text class="profile-stat__value">{{item.value}}</text>
+          <text class="profile-stat__label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card highlight-card">
+      <text class="section-title">本周风格画像</text>
+      <text class="highlight-title">轻通勤 · 柔和色调 · 低复杂度搭配</text>
+      <view class="chip-group">
+        <text wx:for="{{styleTags}}" wx:key="*this" class="chip chip--accent">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">快捷入口</text>
+      <view class="menu-list">
+        <view wx:for="{{menus}}" wx:key="title" class="menu-item">
+          <view>
+            <text class="menu-title">{{item.title}}</text>
+            <text class="menu-desc">{{item.desc}}</text>
+          </view>
+          <text class="menu-arrow">></text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+
+createComponent({
+  data: {
+    stats: [
+      { label: '收藏搭配', value: '24' },
+      { label: '穿搭日记', value: '18' },
+      { label: '连续打卡', value: '7' }
+    ],
+    styleTags: ['奶油色系', '轻通勤', '周末 city walk', '雨天防皱', '基础款叠穿'],
+    menus: [
+      { title: '我的收藏', desc: '回看高分搭配和灵感灵感板' },
+      { title: '天气提醒', desc: '降温、下雨、换季时收到穿搭建议' },
+      { title: '衣橱管理', desc: '分类整理、批量编辑、清理闲置单品' },
+      { title: '账号设置', desc: '同步数据、隐私偏好和小程序设置' }
+    ]
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 48rpx;
+  background: linear-gradient(180deg, #f6efe8 0%, #efe6db 100%);
+  box-sizing: border-box;
+}
+
+.profile-card,
+.section-card {
+  border-radius: 30rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+}
+
+.profile-card {
+  padding: 30rpx;
+}
+
+.profile-top {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #1f3c34 0%, #48685d 100%);
+  color: #f8f4ee;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.profile-info {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.profile-name {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #2c231b;
+}
+
+.profile-bio {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #7b685b;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 26rpx;
+}
+
+.profile-stat {
+  flex: 1;
+  padding: 20rpx 18rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(180deg, #f0e2d6 0%, #fcf7f2 100%);
+}
+
+.profile-stat__value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f3c34;
+}
+
+.profile-stat__label {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #79675b;
+}
+
+.section-card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2d241c;
+}
+
+.highlight-card {
+  background: linear-gradient(180deg, #f7efe5 0%, #fff9f4 100%);
+}
+
+.highlight-title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  line-height: 1.45;
+  color: #2a211b;
+  font-weight: 600;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.chip {
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+
+.chip--accent {
+  background: #efe3d8;
+  color: #6e5b4c;
+}
+
+.menu-list {
+  margin-top: 10rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid rgba(125, 106, 92, 0.14);
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #2e241d;
+}
+
+.menu-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #7b685b;
+}
+
+.menu-arrow {
+  font-size: 28rpx;
+  color: #927c6d;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

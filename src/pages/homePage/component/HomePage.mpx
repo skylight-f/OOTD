@@ -1,0 +1,355 @@
+<template>
+  <view class="page home-page">
+    <view class="hero-card">
+      <view class="hero-main">
+        <text class="eyebrow">天气驱动推荐</text>
+        <text class="city">{{weather.city}}</text>
+        <text class="summary">{{weather.summary}}</text>
+        <view class="temperature-row">
+          <text class="temperature">{{weather.temperature}}°</text>
+          <text class="range">{{weather.low}}° / {{weather.high}}°</text>
+        </view>
+        <view class="tag-row">
+          <text wx:for="{{weather.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+      </view>
+
+      <view class="hero-panel">
+        <text class="panel-label">今日主张</text>
+        <text class="panel-title">{{recommendation.title}}</text>
+        <text class="panel-desc">{{recommendation.description}}</text>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-head">
+        <text class="section-title">推荐搭配</text>
+        <text class="section-subtitle">适合 {{recommendation.scene}}</text>
+      </view>
+
+      <view class="formula-list">
+        <view wx:for="{{recommendation.items}}" wx:key="name" class="formula-item">
+          <view class="formula-badge">{{index + 1}}</view>
+          <view class="formula-body">
+            <text class="formula-name">{{item.name}}</text>
+            <text class="formula-meta">{{item.role}} · {{item.reason}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card tips-card">
+      <view class="section-head">
+        <text class="section-title">推荐理由</text>
+        <text class="section-subtitle">兼顾天气和通勤舒适度</text>
+      </view>
+
+      <view class="reason-list">
+        <view wx:for="{{reasons}}" wx:key="title" class="reason-item">
+          <text class="reason-title">{{item.title}}</text>
+          <text class="reason-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card agenda-card">
+      <text class="section-title">今日穿搭提醒</text>
+      <view class="agenda-grid">
+        <view wx:for="{{agendas}}" wx:key="title" class="agenda-item">
+          <text class="agenda-title">{{item.title}}</text>
+          <text class="agenda-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+
+createComponent({
+  data: {
+    weather: {
+      city: '上海',
+      summary: '多云转小雨，体感偏凉',
+      temperature: 21,
+      low: 18,
+      high: 24,
+      tags: ['通勤日', '午后有雨', '适合叠穿']
+    },
+    recommendation: {
+      title: '轻层次通勤风',
+      description: '用轻薄外套和柔和色系拉开层次，兼顾办公室冷气和下班降温。',
+      scene: '办公室 + 下班外出',
+      items: [
+        { name: '奶油色风衣', role: '外套', reason: '早晚温差大时更从容' },
+        { name: '雾蓝衬衫', role: '内搭', reason: '低饱和蓝色更显干净' },
+        { name: '深灰直筒裤', role: '下装', reason: '稳住通勤感并显利落' },
+        { name: '黑色乐福鞋', role: '鞋履', reason: '应对通勤步行和正式场景' }
+      ]
+    },
+    reasons: [
+      { title: '防小雨', desc: '轻薄风衣更适合今天的阵雨和地铁空调环境。' },
+      { title: '不过度厚重', desc: '21 度体感不需要厚针织，避免午后闷热。' },
+      { title: '适配通勤', desc: '整体色调克制，适合办公室和下班见面场景。' }
+    ],
+    agendas: [
+      { title: '出门前', desc: '带一把折叠伞，包里预留放湿伞空间。' },
+      { title: '午间温度', desc: '室外回暖时可脱下外套，保留衬衫层次。' },
+      { title: '下班场景', desc: '如果临时约饭，直接加一条金属项链即可。' }
+    ]
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 48rpx;
+  background: linear-gradient(180deg, #f6efe8 0%, #efe5d9 100%);
+  box-sizing: border-box;
+}
+
+.hero-card,
+.section-card {
+  border-radius: 30rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+}
+
+.hero-card {
+  padding: 30rpx;
+  background: linear-gradient(160deg, #23453c 0%, #49685f 55%, #dbc6b3 100%);
+}
+
+.hero-main {
+  color: #fff8f0;
+}
+
+.eyebrow {
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: rgba(255, 248, 240, 0.72);
+}
+
+.city {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 48rpx;
+  font-weight: 700;
+}
+
+.summary {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: rgba(255, 248, 240, 0.84);
+}
+
+.temperature-row {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 22rpx;
+}
+
+.temperature {
+  font-size: 88rpx;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.range {
+  margin-left: 18rpx;
+  padding-bottom: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 248, 240, 0.74);
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.tag {
+  padding: 12rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 248, 240, 0.18);
+  color: #fff8f0;
+  font-size: 22rpx;
+}
+
+.hero-panel {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 250, 245, 0.16);
+  backdrop-filter: blur(12rpx);
+}
+
+.panel-label {
+  display: block;
+  font-size: 22rpx;
+  color: rgba(255, 248, 240, 0.72);
+}
+
+.panel-title {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 38rpx;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #fff8f0;
+}
+
+.panel-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: rgba(255, 248, 240, 0.84);
+}
+
+.section-card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2e241d;
+}
+
+.section-subtitle {
+  font-size: 22rpx;
+  color: #8a7768;
+}
+
+.formula-list {
+  margin-top: 16rpx;
+}
+
+.formula-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(125, 106, 92, 0.14);
+}
+
+.formula-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.formula-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  margin-right: 18rpx;
+  border-radius: 50%;
+  background: #24453c;
+  color: #fff8f0;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.formula-body {
+  flex: 1;
+}
+
+.formula-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #2e241d;
+}
+
+.formula-meta {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #7d6a5d;
+}
+
+.tips-card {
+  background: linear-gradient(180deg, #faf4ef 0%, #fffaf6 100%);
+}
+
+.reason-list {
+  margin-top: 18rpx;
+}
+
+.reason-item {
+  margin-bottom: 18rpx;
+  padding: 22rpx;
+  border-radius: 22rpx;
+  background: #f4ebe3;
+}
+
+.reason-item:last-child {
+  margin-bottom: 0;
+}
+
+.reason-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #204038;
+}
+
+.reason-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #6f5d4f;
+}
+
+.agenda-grid {
+  margin-top: 18rpx;
+}
+
+.agenda-item {
+  margin-bottom: 16rpx;
+  padding: 22rpx;
+  border-radius: 22rpx;
+  background: #fff7f1;
+  border: 1rpx solid rgba(36, 69, 60, 0.08);
+}
+
+.agenda-item:last-child {
+  margin-bottom: 0;
+}
+
+.agenda-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #2e241d;
+}
+
+.agenda-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #776457;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

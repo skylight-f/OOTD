@@ -1,0 +1,18 @@
+<template>
+  <MyPage />
+</template>
+
+<script lang="ts">
+import { createPage } from '@mpxjs/core'
+
+createPage({})
+</script>
+
+<script type="application/json">
+  {
+    "navigationBarTitleText": "我的",
+    "usingComponents": {
+      "MyPage": "./component/MyPage"
+    }
+  }
+</script>

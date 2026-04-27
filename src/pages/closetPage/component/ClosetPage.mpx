@@ -1,0 +1,283 @@
+<template>
+  <view class="page closet-page">
+    <view class="hero-card">
+      <text class="eyebrow">数字衣橱</text>
+      <text class="hero-title">一眼找到能穿、好搭、适合今天的衣服</text>
+      <view class="stats-row">
+        <view wx:for="{{stats}}" wx:key="label" class="stat-card">
+          <text class="stat-value">{{item.value}}</text>
+          <text class="stat-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="action-row">
+      <view wx:for="{{actions}}" wx:key="title" class="action-card">
+        <text class="action-title">{{item.title}}</text>
+        <text class="action-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">筛选条件</text>
+      <view class="chip-group">
+        <text wx:for="{{filters}}" wx:key="*this" class="chip">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section-card wardrobe-card">
+      <view class="section-head">
+        <text class="section-title">最近常穿</text>
+        <text class="section-subtitle">{{items.length}} 件单品</text>
+      </view>
+
+      <view class="wardrobe-grid">
+        <view wx:for="{{items}}" wx:key="name" class="wardrobe-item">
+          <view class="item-cover item-cover--{{item.tone}}">
+            <text class="item-icon">{{item.icon}}</text>
+          </view>
+          <text class="item-name">{{item.name}}</text>
+          <text class="item-meta">{{item.color}} · {{item.material}}</text>
+          <text class="item-scene">{{item.scene}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+
+createComponent({
+  data: {
+    stats: [
+      { label: '总单品', value: '128' },
+      { label: '春夏可穿', value: '46' },
+      { label: '一周常穿', value: '12' }
+    ],
+    actions: [
+      { title: '拍照录入', desc: '上传新衣物，自动识别类别和颜色' },
+      { title: '智能整理', desc: '按季节、场合和材质快速分类' }
+    ],
+    filters: ['春日通勤', '低饱和色', '外套', '针织', '可叠穿', '约会场合'],
+    items: [
+      { name: '燕麦针织开衫', color: '燕麦白', material: '羊毛混纺', scene: '通勤 / 室内冷气', tone: 'oat', icon: 'KNIT' },
+      { name: '雾蓝直筒牛仔裤', color: '雾蓝', material: '丹宁', scene: '通勤 / 周末', tone: 'blue', icon: 'DENIM' },
+      { name: '奶油风衣外套', color: '奶油杏', material: '防皱棉', scene: '早晚温差', tone: 'cream', icon: 'COAT' },
+      { name: '黑色乐福鞋', color: '曜石黑', material: '牛皮', scene: '通勤 / 正式', tone: 'black', icon: 'SHOE' },
+      { name: '鼠尾草衬衫', color: '鼠尾草绿', material: '天丝', scene: '办公室', tone: 'green', icon: 'SHIRT' },
+      { name: '焦糖托特包', color: '焦糖棕', material: '皮革', scene: '通勤收纳', tone: 'brown', icon: 'BAG' }
+    ]
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 48rpx;
+  background: linear-gradient(180deg, #f5ede3 0%, #efe4d8 100%);
+  box-sizing: border-box;
+}
+
+.hero-card,
+.section-card,
+.action-card {
+  border-radius: 28rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+}
+
+.hero-card {
+  padding: 32rpx;
+}
+
+.eyebrow {
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: #8c715d;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 40rpx;
+  line-height: 1.35;
+  color: #2a211b;
+  font-weight: 600;
+}
+
+.stats-row {
+  display: flex;
+  margin-top: 28rpx;
+  gap: 16rpx;
+}
+
+.stat-card {
+  flex: 1;
+  padding: 22rpx 18rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(180deg, #f3e1ce 0%, #fbf6f1 100%);
+}
+
+.stat-value {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1f3c34;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #7b685b;
+}
+
+.action-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.action-card {
+  flex: 1;
+  padding: 24rpx;
+}
+
+.action-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2e241d;
+}
+
+.action-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #7a6759;
+}
+
+.section-card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2d241c;
+}
+
+.section-subtitle {
+  font-size: 22rpx;
+  color: #8a7768;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.chip {
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: #efe3d8;
+  color: #6d5a4a;
+  font-size: 22rpx;
+}
+
+.wardrobe-card {
+  padding-bottom: 12rpx;
+}
+
+.wardrobe-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 22rpx;
+}
+
+.wardrobe-item {
+  width: 48%;
+  margin-bottom: 20rpx;
+  padding: 18rpx;
+  border-radius: 24rpx;
+  background: #fffaf6;
+}
+
+.item-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180rpx;
+  border-radius: 20rpx;
+}
+
+.item-cover--oat {
+  background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%);
+}
+
+.item-cover--blue {
+  background: linear-gradient(180deg, #bfd0e3 0%, #edf4fb 100%);
+}
+
+.item-cover--cream {
+  background: linear-gradient(180deg, #e6dccd 0%, #fbf7ef 100%);
+}
+
+.item-cover--black {
+  background: linear-gradient(180deg, #535252 0%, #989592 100%);
+}
+
+.item-cover--green {
+  background: linear-gradient(180deg, #bfd0c6 0%, #f0f7f2 100%);
+}
+
+.item-cover--brown {
+  background: linear-gradient(180deg, #c5936b 0%, #f4e7dc 100%);
+}
+
+.item-icon {
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: rgba(34, 28, 24, 0.72);
+}
+
+.item-name {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: #2d241c;
+  font-weight: 600;
+}
+
+.item-meta,
+.item-scene {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #7d6a5d;
+}
+
+.item-scene {
+  color: #1f3c34;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

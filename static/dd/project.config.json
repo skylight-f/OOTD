@@ -1,0 +1,15 @@
+{
+  "setting": {
+    "newFeature": true,
+    "urlCheck": true,
+    "es6": false,
+    "postcss": false,
+    "minified": false,
+    "checkSiteMap": false,
+    "autoAudits": false
+  },
+  "appid": "wx2001c01b8ecc6612",
+  "projectname": "ootd",
+  "description": "OOTD 小程序项目",
+  "condition": {}
+}
