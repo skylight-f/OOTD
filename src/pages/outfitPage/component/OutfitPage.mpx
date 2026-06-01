@@ -11,22 +11,57 @@
       <text class="create-btn-text">新建搭配</text>
     </view>
 
+    <view class="search-bar">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索搭配名称、场景或描述"
+        value="{{searchKey}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+      />
+      <text wx:if="{{searchKey}}" class="search-clear" bindtap="clearSearch">✕</text>
+    </view>
+
+    <view class="scene-filter">
+      <text
+        wx:for="{{sceneFilters}}"
+        wx:key="*this"
+        class="scene-chip {{activeScene === item ? 'scene-chip--active' : ''}}"
+        data-scene="{{item}}"
+        bindtap="onTapScene"
+      >{{item}}</text>
+    </view>
+
     <!-- 空状态 -->
     <view wx:if="{{outfits.length === 0}}" class="empty-state">
-      <text class="empty-title">还没有搭配记录</text>
-      <text class="empty-desc">从衣橱选择单品，创建你的第一组搭配公式</text>
+      <text class="empty-title">{{emptyTitle}}</text>
+      <text class="empty-desc">{{emptyDesc}}</text>
     </view>
 
     <!-- 搭配列表 -->
     <view wx:else class="outfit-list">
-      <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="goDetail">
-        <view class="outfit-cover outfit-cover--{{item.tone}}">
-          <text class="outfit-label">{{item.scene}}</text>
+      <view
+        wx:for="{{outfits}}"
+        wx:key="id"
+        class="outfit-card {{swipeId === item.id ? 'outfit-card--swiped' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="goDetail"
+        bindtouchstart="onSwipeStart"
+        bindtouchend="onSwipeEnd"
+      >
+        <view class="outfit-card-inner">
+          <view class="outfit-cover outfit-cover--{{item.tone}}">
+            <text class="outfit-label">{{item.scene}}</text>
+          </view>
+          <view class="outfit-body">
+            <text class="outfit-title">{{item.name}}</text>
+            <text class="outfit-desc">{{item.description || '暂无描述'}}</text>
+            <text class="outfit-count">{{item.clothingIds.length}} 件单品</text>
+          </view>
         </view>
-        <view class="outfit-body">
-          <text class="outfit-title">{{item.name}}</text>
-          <text class="outfit-desc">{{item.description || '暂无描述'}}</text>
-          <text class="outfit-count">{{item.clothingIds.length}} 件单品</text>
+        <view class="outfit-delete" data-id="{{item.id}}" catchtap="onDeleteOutfit">
+          <text class="outfit-delete-text">删除</text>
         </view>
       </view>
     </view>
@@ -35,10 +70,10 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllOutfits, getAllClothes, type OutfitItem, type ClothingItem } from '@/utils/storage'
+import { getAllOutfits, deleteOutfit, type OutfitItem } from '@/utils/storage'
 
 /** 将搭配与衣物信息组合为卡片展示数据 */
-function buildOutfitCards(outfits: OutfitItem[], clothes: ClothingItem[]): Array<{
+function buildOutfitCards(outfits: OutfitItem[]): Array<{
   id: string
   name: string
   scene: string
@@ -58,7 +93,15 @@ function buildOutfitCards(outfits: OutfitItem[], clothes: ClothingItem[]): Array
 
 createComponent({
   data: {
-    outfits: [] as ReturnType<typeof buildOutfitCards>
+    allOutfits: [] as ReturnType<typeof buildOutfitCards>,
+    outfits: [] as ReturnType<typeof buildOutfitCards>,
+    sceneFilters: ['全部'] as string[],
+    activeScene: '全部',
+    searchKey: '',
+    emptyTitle: '还没有搭配记录',
+    emptyDesc: '从衣橱选择单品，创建你的第一组搭配公式',
+    swipeId: '',
+    touchStartX: 0
   },
 
   attached() {
@@ -66,18 +109,99 @@ createComponent({
   },
 
   methods: {
+    applyFilters() {
+      const { allOutfits, activeScene, searchKey } = this.data
+      const key = searchKey.trim().toLowerCase()
+
+      let filtered = allOutfits
+      if (activeScene !== '全部') {
+        filtered = filtered.filter((item) => item.scene === activeScene)
+      }
+
+      if (key) {
+        filtered = filtered.filter((item) =>
+          item.name.toLowerCase().includes(key) ||
+          item.scene.toLowerCase().includes(key) ||
+          item.description.toLowerCase().includes(key)
+        )
+      }
+
+      this.setData({
+        outfits: filtered,
+        emptyTitle: key || activeScene !== '全部' ? '没有匹配的搭配' : '还没有搭配记录',
+        emptyDesc: key || activeScene !== '全部'
+          ? '试试切换筛选条件或清空关键词'
+          : '从衣橱选择单品，创建你的第一组搭配公式'
+      })
+    },
+
     refreshData() {
       const outfits = getAllOutfits()
-      const clothes = getAllClothes()
-      const cards = buildOutfitCards(outfits, clothes)
-      this.setData({ outfits: cards })
+      const cards = buildOutfitCards(outfits)
+      const sceneFilters = ['全部', ...Array.from(new Set(cards.map((item) => item.scene))).filter(Boolean)]
+
+      this.setData({ allOutfits: cards, sceneFilters })
+      this.applyFilters()
+    },
+
+    onSearchInput(e: { detail: { value: string } }) {
+      this.setData({ searchKey: e.detail.value })
+      this.applyFilters()
+    },
+
+    clearSearch() {
+      this.setData({ searchKey: '' })
+      this.applyFilters()
+    },
+
+    onTapScene(e: { currentTarget: { dataset: { scene: string } } }) {
+      this.setData({ activeScene: e.currentTarget.dataset.scene })
+      this.applyFilters()
     },
 
     goCreate() {
       wx.navigateTo({ url: '/pages/outfitCreatePage/index' })
     },
 
+    /** 触摸开始 */
+    onSwipeStart(e: { touches: Array<{ clientX: number }> }) {
+      this.setData({
+        touchStartX: e.touches[0].clientX
+      })
+    },
+
+    /** 触摸结束，判断滑动方向 */
+    onSwipeEnd(e: { changedTouches: Array<{ clientX: number }>; currentTarget: { dataset: { id: string } } }) {
+      const deltaX = e.changedTouches[0].clientX - this.data.touchStartX
+      if (deltaX < -50) {
+        this.setData({ swipeId: e.currentTarget.dataset.id })
+      } else if (deltaX > 30) {
+        this.setData({ swipeId: '' })
+      }
+    },
+
+    /** 删除搭配 */
+    onDeleteOutfit(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      wx.showModal({
+        title: '确认删除',
+        content: '删除后无法恢复，是否继续？',
+        success: (res) => {
+          if (res.confirm) {
+            deleteOutfit(id)
+            this.refreshData()
+            wx.showToast({ title: '已删除', icon: 'success' })
+          }
+          this.setData({ swipeId: '' })
+        }
+      })
+    },
+
     goDetail(e: { currentTarget: { dataset: { id: string } } }) {
+      if (this.data.swipeId === e.currentTarget.dataset.id) {
+        this.setData({ swipeId: '' })
+        return
+      }
       wx.navigateTo({ url: `/pages/outfitDetailPage/index?id=${e.currentTarget.dataset.id}` })
     }
   }
@@ -146,6 +270,61 @@ createComponent({
   color: #ff2442;
 }
 
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  height: 76rpx;
+  margin-top: 18rpx;
+  padding: 0 18rpx;
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+}
+
+.search-icon {
+  font-size: 24rpx;
+  color: #a3a3a3;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  color: #222222;
+}
+
+.search-clear {
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  line-height: 34rpx;
+  text-align: center;
+  background: #f2f2f2;
+  color: #7d7d7d;
+  font-size: 18rpx;
+}
+
+.scene-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.scene-chip {
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #777777;
+  font-size: 22rpx;
+}
+
+.scene-chip--active {
+  background: #ff2442;
+  color: #ffffff;
+}
+
 .empty-state {
   margin-top: 40rpx;
   padding: 60rpx 40rpx;
@@ -174,68 +353,63 @@ createComponent({
   display: flex;
   overflow: hidden;
   margin-bottom: 18rpx;
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  animation: fadeSlideUp 0.4s ease-out backwards;
+}
+
+.outfit-card:nth-child(1) { animation-delay: 0.05s; }
+.outfit-card:nth-child(2) { animation-delay: 0.1s; }
+.outfit-card:nth-child(3) { animation-delay: 0.15s; }
+.outfit-card:nth-child(4) { animation-delay: 0.2s; }
+.outfit-card:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .outfit-card:last-child {
   margin-bottom: 0;
 }
 
-.outfit-cover {
+.outfit-card--swiped .outfit-card-inner {
+  transform: translateX(-160rpx);
+}
+
+.outfit-card-inner {
   display: flex;
-  align-items: flex-end;
-  width: 220rpx;
-  min-height: 190rpx;
-  padding: 18rpx;
-  box-sizing: border-box;
-}
-
-.outfit-cover--oat { background: linear-gradient(150deg, #e5d7c3, #c4a97d); }
-.outfit-cover--blue { background: linear-gradient(150deg, #d8eafa, #769fc4); }
-.outfit-cover--cream { background: linear-gradient(150deg, #f5ead5, #d4b896); }
-.outfit-cover--black { background: linear-gradient(150deg, #989592, #535252); }
-.outfit-cover--green { background: linear-gradient(150deg, #d7e6dc, #6c8f7a); }
-.outfit-cover--brown { background: linear-gradient(150deg, #f4e7dc, #c5936b); }
-.outfit-cover--rose { background: linear-gradient(150deg, #ffe2e8, #d58b9b); }
-.outfit-cover--red { background: linear-gradient(150deg, #fce4ec, #d4a0a0); }
-.outfit-cover--pink { background: linear-gradient(150deg, #fce4ec, #e0b8c4); }
-.outfit-cover--gray { background: linear-gradient(150deg, #e8e8e8, #b5b5b5); }
-.outfit-cover--white { background: linear-gradient(150deg, #f8f8f8, #e0e0e0); }
-
-.outfit-label {
-  padding: 8rpx 12rpx;
-  border-radius: 8rpx;
-  background: rgba(255, 255, 255, 0.82);
-  color: #2d2d2d;
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.outfit-body {
   flex: 1;
-  min-width: 0;
-  padding: 24rpx 24rpx 22rpx;
+  position: relative;
+  z-index: 2;
+  background: #ffffff;
+  transition: transform 0.3s ease;
 }
 
-.outfit-title {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #222222;
+.outfit-delete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff3b30;
+  z-index: 1;
 }
 
-.outfit-desc {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.55;
-  color: #696969;
-}
-
-.outfit-count {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #999999;
+.outfit-delete-text {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 500;
 }
 </style>
 

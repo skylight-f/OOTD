@@ -24,6 +24,39 @@
       </view>
     </view>
 
+    <!-- 吊牌信息弹窗 -->
+    <view class="tag-modal" wx:if="{{showTagModal}}">
+      <view class="tag-modal-mask" bindtap="onCloseTagModal"></view>
+      <view class="tag-modal-panel">
+        <view class="tag-modal-header">
+          <text class="tag-modal-title">📋 吊牌信息</text>
+          <text class="tag-modal-close" bindtap="onCloseTagModal">✕</text>
+        </view>
+        <view class="tag-modal-body">
+          <view class="tag-field">
+            <text class="tag-label">品牌</text>
+            <input class="tag-input" placeholder="如：UNIQLO" value="{{tagForm.brand}}" bindinput="onTagBrand" />
+          </view>
+          <view class="tag-field">
+            <text class="tag-label">尺码</text>
+            <input class="tag-input" placeholder="如：M / 170/88A" value="{{tagForm.size}}" bindinput="onTagSize" />
+          </view>
+          <view class="tag-field">
+            <text class="tag-label">材质</text>
+            <input class="tag-input" placeholder="如：100%棉" value="{{tagForm.material}}" bindinput="onTagMaterial" />
+          </view>
+          <view class="tag-field">
+            <text class="tag-label">价格</text>
+            <input class="tag-input" type="digit" placeholder="如：299" value="{{tagForm.price}}" bindinput="onTagPrice" />
+          </view>
+        </view>
+        <view class="tag-modal-footer">
+          <view class="tag-btn tag-btn-cancel" bindtap="onCloseTagModal">取消</view>
+          <view class="tag-btn tag-btn-confirm" bindtap="onConfirmTag">填入表单</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 表单编辑模式 -->
     <view class="form-section" wx:if="{{showForm}}">
       <!-- 图片预览 -->
@@ -91,6 +124,27 @@
             placeholder="可选"
             value="{{formData.brand}}"
             bindinput="onInputBrand"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">尺码</text>
+          <input
+            class="form-input"
+            placeholder="如：M / 170/88A"
+            value="{{formData.size}}"
+            bindinput="onInputSize"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">价格</text>
+          <input
+            class="form-input"
+            type="digit"
+            placeholder="如：299"
+            value="{{formData.price}}"
+            bindinput="onInputPrice"
           />
         </view>
       </view>
@@ -191,12 +245,23 @@ createComponent({
     showForm: false,
     selectedImage: '',
 
+    // 吊牌信息弹窗
+    showTagModal: false,
+    tagForm: {
+      brand: '',
+      size: '',
+      material: '',
+      price: ''
+    },
+
     // 表单数据
     formData: {
       name: '',
       color: '',
       material: '',
-      brand: ''
+      brand: '',
+      size: '',
+      price: ''
     },
 
     // Picker 选项
@@ -256,12 +321,46 @@ createComponent({
           this.onTapAlbum()
           break
         case 'tag':
+          this.setData({ showTagModal: true })
+          break
         case 'classify':
           wx.showToast({ title: '功能开发中', icon: 'none', duration: 1500 })
           break
         default:
           break
       }
+    },
+
+    /** 吊牌输入绑定 */
+    onTagBrand(e: any) {
+      this.setData({ 'tagForm.brand': e.detail.value })
+    },
+    onTagSize(e: any) {
+      this.setData({ 'tagForm.size': e.detail.value })
+    },
+    onTagMaterial(e: any) {
+      this.setData({ 'tagForm.material': e.detail.value })
+    },
+    onTagPrice(e: any) {
+      this.setData({ 'tagForm.price': e.detail.value })
+    },
+
+    /** 关闭吊牌弹窗 */
+    onCloseTagModal() {
+      this.setData({ showTagModal: false })
+    },
+
+    /** 确认吊牌信息，填入表单 */
+    onConfirmTag() {
+      const { tagForm, formData } = this.data
+      this.setData({
+        showTagModal: false,
+        'formData.brand': tagForm.brand || formData.brand,
+        'formData.material': tagForm.material || formData.material,
+        'formData.size': tagForm.size,
+        'formData.price': tagForm.price
+      })
+      wx.showToast({ title: '已填入表单', icon: 'success', duration: 1200 })
     },
 
     /** 图片选择后进入表单模式 */
@@ -287,6 +386,14 @@ createComponent({
 
     onInputBrand(e: any) {
       this.setData({ 'formData.brand': e.detail.value })
+    },
+
+    onInputSize(e: any) {
+      this.setData({ 'formData.size': e.detail.value })
+    },
+
+    onInputPrice(e: any) {
+      this.setData({ 'formData.price': e.detail.value })
     },
 
     /** 类别选择器变化 */
@@ -323,7 +430,9 @@ createComponent({
           name: '',
           color: '',
           material: '',
-          brand: ''
+          brand: '',
+          size: '',
+          price: ''
         },
         categoryIndex: 0,
         seasonIndex: 0,
@@ -360,7 +469,9 @@ createComponent({
             season: season,
             imagePath: imagePath,
             tone: tone,
-            brand: formData.brand.trim()
+            brand: formData.brand.trim(),
+            size: formData.size.trim(),
+            price: formData.price.trim()
           }
 
           addClothing(input)
@@ -716,6 +827,117 @@ createComponent({
   font-size: 28rpx;
   font-weight: 700;
   color: #ffffff;
+}
+
+/* ---- 吊牌信息弹窗 ---- */
+
+.tag-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-modal-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.tag-modal-panel {
+  position: relative;
+  width: 85%;
+  background: #ffffff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  animation: modalIn 0.25s ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.tag-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 16rpx;
+}
+
+.tag-modal-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.tag-modal-close {
+  font-size: 32rpx;
+  color: #999999;
+  padding: 8rpx;
+}
+
+.tag-modal-body {
+  padding: 16rpx 32rpx;
+}
+
+.tag-field {
+  margin-bottom: 24rpx;
+}
+
+.tag-label {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #555555;
+  margin-bottom: 10rpx;
+}
+
+.tag-input {
+  width: 100%;
+  height: 76rpx;
+  padding: 0 20rpx;
+  border-radius: 8rpx;
+  background: #f6f6f6;
+  font-size: 26rpx;
+  color: #333333;
+  box-sizing: border-box;
+}
+
+.tag-modal-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 32rpx 32rpx;
+}
+
+.tag-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.tag-btn-cancel {
+  background: #f2f2f2;
+  color: #666666;
+}
+
+.tag-btn-confirm {
+  background: #ff2442;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(255, 36, 66, 0.28);
 }
 </style>
 

@@ -28,7 +28,7 @@
     <view class="section-card">
       <text class="section-title">快捷入口</text>
       <view class="menu-list">
-        <view wx:for="{{menus}}" wx:key="title" class="menu-item">
+        <view wx:for="{{menus}}" wx:key="title" class="menu-item" data-index="{{index}}" bindtap="onTapMenu">
           <view>
             <text class="menu-title">{{item.title}}</text>
             <text class="menu-desc">{{item.desc}}</text>
@@ -101,6 +101,7 @@ createComponent({
     stats: [
       { label: '搭配保存', value: '0' },
       { label: '总穿搭次数', value: '0' },
+      { label: '收藏衣物', value: '0' },
       { label: '连续打卡', value: '0' }
     ],
     styleTags: ['加载中...'] as string[],
@@ -116,6 +117,27 @@ createComponent({
   },
 
   methods: {
+    onTapMenu(e: { currentTarget: { dataset: { index: number } } }) {
+      const index = Number(e.currentTarget.dataset.index)
+
+      if (index === 0) {
+        wx.switchTab({ url: '/pages/closetPage/index' })
+        return
+      }
+
+      if (index === 1) {
+        wx.switchTab({ url: '/pages/homePage/index' })
+        return
+      }
+
+      wx.showModal({
+        title: '账号设置',
+        content: '当前版本使用本地存储，账号同步与隐私偏好设置会在后续版本开放。',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    },
+
     refreshData() {
       const statsData = getClothingStats()
       const outfits = getAllOutfits()
@@ -124,6 +146,9 @@ createComponent({
       // 总穿搭次数 = 所有衣物的 wearCount 之和
       const totalWears = clothes.reduce((sum, c) => sum + c.wearCount, 0)
 
+      // 收藏数量 = favorite 为 true 的衣物数量
+      const favoriteCount = clothes.filter((c) => c.favorite).length
+
       const streak = calcStreak(clothes)
       const tags = buildStyleTags(clothes)
 
@@ -131,6 +156,7 @@ createComponent({
         stats: [
           { label: '搭配保存', value: String(outfits.length) },
           { label: '总穿搭次数', value: String(totalWears) },
+          { label: '收藏衣物', value: String(favoriteCount) },
           { label: '连续打卡', value: `${streak} 天` }
         ],
         styleTags: tags
@@ -153,10 +179,31 @@ createComponent({
   border-radius: 30rpx;
   background: rgba(255, 250, 245, 0.96);
   box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+  animation: fadeSlideUp 0.5s ease-out backwards;
 }
 
 .profile-card {
   padding: 30rpx;
+  animation-delay: 0s;
+}
+
+.section-card:nth-of-type(1) {
+  animation-delay: 0.1s;
+}
+
+.section-card:nth-of-type(2) {
+  animation-delay: 0.2s;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .profile-top {
@@ -208,6 +255,11 @@ createComponent({
   padding: 20rpx 18rpx;
   border-radius: 22rpx;
   background: linear-gradient(180deg, #f0e2d6 0%, #fcf7f2 100%);
+  transition: transform 0.2s ease;
+}
+
+.profile-stat:active {
+  transform: scale(0.96);
 }
 
 .profile-stat__value {

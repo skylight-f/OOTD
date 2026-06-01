@@ -21,7 +21,12 @@
           <text class="info-name">{{clothing.name}}</text>
           <text class="info-category">{{clothing.category}}</text>
         </view>
-        <view class="info-tone-dot info-tone-dot--{{clothing.tone}}"></view>
+        <view class="info-head-right">
+          <view class="favorite-btn {{clothing.favorite ? 'favorite-btn--active' : ''}}" bindtap="handleToggleFavorite">
+            <text class="favorite-icon">{{clothing.favorite ? '♥' : '♡'}}</text>
+          </view>
+          <view class="info-tone-dot info-tone-dot--{{clothing.tone}}"></view>
+        </view>
       </view>
 
       <!-- 核心信息 -->
@@ -41,6 +46,14 @@
         <view class="info-item" wx:if="{{clothing.brand}}">
           <text class="info-label">品牌</text>
           <text class="info-value">{{clothing.brand}}</text>
+        </view>
+        <view class="info-item" wx:if="{{clothing.size}}">
+          <text class="info-label">尺码</text>
+          <text class="info-value">{{clothing.size}}</text>
+        </view>
+        <view class="info-item" wx:if="{{clothing.price}}">
+          <text class="info-label">价格</text>
+          <text class="info-value">¥{{clothing.price}}</text>
         </view>
       </view>
 
@@ -149,6 +162,18 @@
         <input class="field-input" value="{{editForm.brand}}" data-field="brand" bindinput="handleEditInput" placeholder="可选" />
       </view>
 
+      <!-- 尺码 -->
+      <view class="form-field">
+        <text class="field-label">尺码</text>
+        <input class="field-input" value="{{editForm.size}}" data-field="size" bindinput="handleEditInput" placeholder="可选" />
+      </view>
+
+      <!-- 价格 -->
+      <view class="form-field">
+        <text class="field-label">价格</text>
+        <input class="field-input" value="{{editForm.price}}" data-field="price" bindinput="handleEditInput" placeholder="可选（元）" type="digit" />
+      </view>
+
       <!-- 编辑模式按钮 -->
       <view class="edit-actions">
         <view class="edit-btn edit-btn--cancel" bindtap="cancelEdit" hover-class="edit-btn--pressed">
@@ -169,6 +194,7 @@ import {
   updateClothing,
   deleteClothing,
   recordWear,
+  toggleFavorite,
   inferTone,
   categoryToIcon,
   CATEGORY_OPTIONS,
@@ -213,7 +239,9 @@ createComponent({
       name: '',
       color: '',
       material: '',
-      brand: ''
+      brand: '',
+      size: '',
+      price: ''
     }
   },
 
@@ -269,6 +297,27 @@ createComponent({
       }
     },
 
+    /** 切换收藏 */
+    handleToggleFavorite() {
+      const item = this.data.clothing
+      if (!item) return
+
+      const updated = toggleFavorite(item.id)
+      if (updated) {
+        this.setData({
+          clothing: {
+            ...updated,
+            icon: categoryToIcon(updated.category),
+            tone: updated.tone || inferTone(updated.color)
+          }
+        })
+        wx.showToast({
+          title: updated.favorite ? '已收藏' : '已取消收藏',
+          icon: 'success'
+        })
+      }
+    },
+
     /** 进入编辑 */
     enterEdit() {
       const item = this.data.clothing
@@ -282,7 +331,9 @@ createComponent({
           name: item.name,
           color: item.color,
           material: item.material,
-          brand: item.brand || ''
+          brand: item.brand || '',
+          size: item.size || '',
+          price: item.price || ''
         },
         editCategoryIndex: CATEGORY_OPTIONS.indexOf(item.category),
         editSeasonIndex: SEASON_OPTIONS.indexOf(item.season),
@@ -316,6 +367,8 @@ createComponent({
         color: editForm.color.trim() || '未标注',
         material: editForm.material.trim() || '未标注',
         scene: sceneText,
+        size: editForm.size.trim(),
+        price: editForm.price.trim(),
         season: seasonOptions[editSeasonIndex],
         brand: editForm.brand.trim(),
         tone: inferTone(editForm.color)
@@ -722,6 +775,46 @@ createComponent({
 
 .edit-btn--save .edit-btn-text {
   color: #ffffff;
+}
+
+/* 收藏按钮 & 头部右侧 */
+.info-head-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.favorite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+  transition: all 0.25s ease;
+}
+
+.favorite-btn--active {
+  background: #fff0f3;
+  animation: favPop 0.3s ease;
+}
+
+@keyframes favPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.favorite-icon {
+  font-size: 36rpx;
+  color: #cccccc;
+  transition: color 0.2s ease;
+}
+
+.favorite-btn--active .favorite-icon {
+  color: #ff2442;
 }
 </style>
 

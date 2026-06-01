@@ -2,7 +2,7 @@
   "setting": {
     "newFeature": true,
     "urlCheck": true,
-    "es6": false,
+    "es6": true,
     "postcss": true,
     "minified": false,
     "checkSiteMap": false,
@@ -10,7 +10,7 @@
     "compileWorklet": false,
     "uglifyFileName": false,
     "uploadWithSourceMap": true,
-    "enhance": false,
+    "enhance": true,
     "packNpmManually": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
@@ -26,12 +26,16 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "ignoreUploadUnusedFiles": false
+    "ignoreUploadUnusedFiles": true
   },
   "appid": "wx2001c01b8ecc6612",
   "projectname": "ootd",
   "description": "OOTD 小程序项目",
-  "condition": {},
+  "condition": {
+    "miniprogram": {
+      "list": []
+    }
+  },
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},
   "packOptions": {
@@ -39,5 +43,5 @@
     "include": []
   },
   "editorSetting": {},
-  "libVersion": "3.15.2"
+  "libVersion": "3.15.3"
 }

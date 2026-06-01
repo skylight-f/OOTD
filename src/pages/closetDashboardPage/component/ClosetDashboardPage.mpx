@@ -12,7 +12,8 @@
       </view>
     </view>
 
-    <view class="section-card">
+    <view wx:if="{{hasClothes}}">
+      <view class="section-card">
       <view class="section-head">
         <text class="section-title">分类占比</text>
         <text class="section-subtitle">按当前录入单品</text>
@@ -28,9 +29,9 @@
           </view>
         </view>
       </view>
-    </view>
+      </view>
 
-    <view class="section-card">
+      <view class="section-card">
       <view class="section-head">
         <text class="section-title">场景覆盖</text>
         <text class="section-subtitle">最近 30 天</text>
@@ -42,15 +43,24 @@
           <text class="scene-desc">{{item.desc}}</text>
         </view>
       </view>
-    </view>
+      </view>
 
-    <view class="section-card">
+      <view class="section-card">
       <text class="section-title">复穿建议</text>
       <view class="insight-list">
         <view wx:for="{{insights}}" wx:key="title" class="insight-item">
           <text class="insight-title">{{item.title}}</text>
           <text class="insight-desc">{{item.desc}}</text>
         </view>
+      </view>
+      </view>
+    </view>
+
+    <view wx:else class="section-card empty-card">
+      <text class="empty-title">衣橱还没有数据</text>
+      <text class="empty-desc">先添加几件衣物，再回来查看分类占比、场景覆盖和复穿建议。</text>
+      <view class="empty-btn" bindtap="goAddClothes">
+        <text class="empty-btn-text">去添加衣物</text>
       </view>
     </view>
   </view>
@@ -165,6 +175,7 @@ function calcUsageRate(clothes: ClothingItem[]): number {
 
 createComponent({
   data: {
+    hasClothes: false,
     overviewStats: [
       { label: '总单品', value: '0' },
       { label: '本季可穿', value: '0' },
@@ -190,6 +201,7 @@ createComponent({
       const usageRate = calcUsageRate(clothes)
 
       this.setData({
+        hasClothes: clothes.length > 0,
         overviewStats: [
           { label: '总单品', value: String(stats.total) },
           { label: '本季可穿', value: String(stats.seasonCount) },
@@ -200,6 +212,12 @@ createComponent({
         categoryBars: buildCategoryBars(clothes),
         sceneStats: buildSceneStats(clothes),
         insights: buildInsights(clothes)
+      })
+    },
+
+    goAddClothes() {
+      wx.switchTab({
+        url: '/pages/addClothesPage/index'
       })
     }
   }
@@ -416,6 +434,39 @@ createComponent({
 .insight-item:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.empty-title {
+  color: #222222;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.empty-desc {
+  margin-top: 14rpx;
+  color: #777777;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.empty-btn {
+  margin-top: 28rpx;
+  padding: 20rpx 36rpx;
+  border-radius: 999rpx;
+  background: #ff2442;
+}
+
+.empty-btn-text {
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 700;
 }
 
 .insight-title {

@@ -223,6 +223,28 @@ createComponent({
   background: #fafafa;
   box-sizing: border-box;
   border: 3rpx solid transparent;
+  animation: fadeSlideUp 0.35s ease-out backwards;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.cloth-item:nth-child(1) { animation-delay: 0.03s; }
+.cloth-item:nth-child(2) { animation-delay: 0.06s; }
+.cloth-item:nth-child(3) { animation-delay: 0.09s; }
+.cloth-item:nth-child(4) { animation-delay: 0.12s; }
+.cloth-item:nth-child(5) { animation-delay: 0.15s; }
+.cloth-item:nth-child(6) { animation-delay: 0.18s; }
+.cloth-item:nth-child(7) { animation-delay: 0.21s; }
+.cloth-item:nth-child(8) { animation-delay: 0.24s; }
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .cloth-item--selected {
@@ -349,6 +371,21 @@ createComponent({
   font-weight: 600;
 }
 
+.form-card {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .save-btn {
   margin-top: 32rpx;
   padding: 24rpx;
@@ -357,9 +394,13 @@ createComponent({
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.save-btn--pressed { opacity: 0.85; }
+.save-btn--pressed {
+  transform: scale(0.98);
+  opacity: 0.85;
+}
 
 .save-btn-text {
   font-size: 30rpx;

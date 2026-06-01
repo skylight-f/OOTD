@@ -30,6 +30,14 @@ type TabEvent = {
   }
 }
 
+function getCurrentTabIndex(list: Array<{ pagePath: string }>): number {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const currentRoute = currentPage?.route || ''
+  const index = list.findIndex((item) => item.pagePath === currentRoute)
+  return index >= 0 ? index : 0
+}
+
 createComponent({
   data: {
     selected: 0,
@@ -41,10 +49,26 @@ createComponent({
       { pagePath: 'pages/myPage/index', text: '我的', icon: 'user' }
     ]
   },
+  attached() {
+    this.syncSelected()
+  },
+  pageLifetimes: {
+    show() {
+      this.syncSelected()
+    }
+  },
   methods: {
+    syncSelected() {
+      this.setData({
+        selected: getCurrentTabIndex(this.data.list)
+      })
+    },
+
     switchTab(event: TabEvent) {
       const { index, path } = event.currentTarget.dataset
       if (Number(index) === this.data.selected) return
+
+      this.setData({ selected: Number(index) })
 
       wx.switchTab({
         url: `/${path}`

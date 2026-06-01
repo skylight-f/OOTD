@@ -16,6 +16,19 @@
       </view>
     </view>
 
+    <!-- 搜索栏 -->
+    <view class="search-bar">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索衣物名称、颜色、品牌…"
+        value="{{searchKey}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+      />
+      <text wx:if="{{searchKey}}" class="search-clear" bindtap="clearSearch">✕</text>
+    </view>
+
     <view class="action-row">
       <view
         wx:for="{{actions}}"
@@ -45,24 +58,60 @@
     <!-- 有衣物时展示列表 -->
     <view class="section-card wardrobe-card" wx:if="{{items.length > 0}}">
       <view class="section-head">
-        <text class="section-title">最近常穿</text>
+        <text class="section-title">{{multiMode ? '已选 ' + selectedIds.length + ' 件' : '最近常穿'}}</text>
         <text class="section-subtitle">{{items.length}} 件单品</text>
       </view>
 
       <view class="wardrobe-grid">
-        <view wx:for="{{items}}" wx:key="id" class="wardrobe-item" bindtap="onTapItem" data-id="{{item.id}}">
-          <view class="item-cover item-cover--{{item.tone}}">
-            <image
-              wx:if="{{item.imagePath}}"
-              class="item-image"
-              src="{{item.imagePath}}"
-              mode="aspectFill"
-            />
-            <text wx:else class="item-icon">{{item.icon}}</text>
+        <view
+          wx:for="{{items}}"
+          wx:key="id"
+          class="wardrobe-item {{swipeId === item.id ? 'wardrobe-item--swiped' : ''}} {{multiMode ? 'wardrobe-item--multi' : ''}} {{multiMode && selectedIds.indexOf(item.id) >= 0 ? 'wardrobe-item--selected' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onTapItem"
+          bindlongpress="onLongPress"
+          bindtouchstart="onSwipeStart"
+          bindtouchend="onSwipeEnd"
+        >
+          <view class="item-inner">
+            <!-- 多选勾选标记 -->
+            <view wx:if="{{multiMode}}" class="item-check {{selectedIds.indexOf(item.id) >= 0 ? 'item-check--active' : ''}}">
+              <text wx:if="{{selectedIds.indexOf(item.id) >= 0}}" class="item-check-icon">✓</text>
+            </view>
+            <view class="item-cover item-cover--{{item.tone}}">
+              <image
+                wx:if="{{item.imagePath}}"
+                class="item-image"
+                src="{{item.imagePath}}"
+                mode="aspectFill"
+              />
+              <text wx:else class="item-icon">{{item.icon}}</text>
+            </view>
+            <text class="item-name">{{item.name}}</text>
+            <text class="item-meta">{{item.color}} · {{item.material}}</text>
+            <text class="item-scene">{{item.scene}}</text>
           </view>
-          <text class="item-name">{{item.name}}</text>
-          <text class="item-meta">{{item.color}} · {{item.material}}</text>
-          <text class="item-scene">{{item.scene}}</text>
+          <view wx:if="{{!multiMode}}" class="item-delete" data-id="{{item.id}}" catchtap="onDeleteItem">
+            <text class="item-delete-text">删除</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 多选模式底部操作栏 -->
+    <view wx:if="{{multiMode}}" class="multi-bar">
+      <view class="multi-bar-left" bindtap="toggleSelectAll">
+        <view class="multi-bar-check {{selectedIds.length === items.length && items.length > 0 ? 'multi-bar-check--active' : ''}}">
+          <text wx:if="{{selectedIds.length === items.length && items.length > 0}}" class="multi-bar-check-icon">✓</text>
+        </view>
+        <text class="multi-bar-label">全选</text>
+      </view>
+      <view class="multi-bar-right">
+        <view class="multi-bar-btn multi-bar-btn--cancel" bindtap="exitMultiMode">
+          <text class="multi-bar-btn-text">取消</text>
+        </view>
+        <view class="multi-bar-btn multi-bar-btn--delete" bindtap="batchDelete">
+          <text class="multi-bar-btn-text">删除（{{selectedIds.length}}）</text>
         </view>
       </view>
     </view>
@@ -83,7 +132,7 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllClothes, getClothingStats, inferTone, categoryToIcon } from '@/utils/storage'
+import { getAllClothes, getClothingStats, deleteClothing, inferTone, categoryToIcon } from '@/utils/storage'
 import type { ClothingItem, ClothingStats } from '@/utils/storage'
 
 
@@ -154,32 +203,104 @@ createComponent({
     ],
     filters: ['全部', '春日通勤', '低饱和色', '外套', '针织', '可叠穿', '约会场合'],
     activeFilter: '全部',
+    searchKey: '',
+    swipeId: '',
+    touchStartX: 0,
+    multiMode: false,
+    selectedIds: [] as string[],
     items: [] as ReturnType<typeof toDisplayItem>[]
   },
 
   attached() { this.refreshData() },
 
   methods: {
+    /** 触摸开始 */
+    onSwipeStart(e: { touches: Array<{ clientX: number }> }) {
+      this.setData({
+        touchStartX: e.touches[0].clientX
+      })
+    },
+
+    /** 触摸结束，判断滑动方向 */
+    onSwipeEnd(e: { changedTouches: Array<{ clientX: number }>; currentTarget: { dataset: { id: string } } }) {
+      const deltaX = e.changedTouches[0].clientX - this.data.touchStartX
+      // 左滑超过50px才展开删除按钮
+      if (deltaX < -50) {
+        this.setData({ swipeId: e.currentTarget.dataset.id })
+      } else if (deltaX > 30) {
+        this.setData({ swipeId: '' })
+      }
+    },
+
+    /** 删除衣物 */
+    onDeleteItem(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      wx.showModal({
+        title: '确认删除',
+        content: '删除后无法恢复，是否继续？',
+        success: (res) => {
+          if (res.confirm) {
+            deleteClothing(id)
+            this.refreshData()
+            wx.showToast({ title: '已删除', icon: 'success' })
+          }
+          this.setData({ swipeId: '' })
+        }
+      })
+    },
+    /** 搜索输入 */
+    onSearchInput(e: { detail: { value: string } }) {
+      this.setData({ searchKey: e.detail.value })
+      this.applyFilters()
+    },
+
+    /** 清空搜索 */
+    clearSearch() {
+      this.setData({ searchKey: '' })
+      this.applyFilters()
+    },
+
+    /** 应用筛选和搜索 */
+    applyFilters() {
+      const allClothes = getAllClothes()
+      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
+      const displayItems = sorted.map(toDisplayItem)
+      
+      // 先应用标签筛选
+      let filtered = filterItems(displayItems, this.data.activeFilter, allClothes)
+      
+      // 再应用搜索关键词
+      if (this.data.searchKey) {
+        const key = this.data.searchKey.trim().toLowerCase()
+        filtered = filtered.filter((item) => {
+          const original = allClothes.find((c) => c.id === item.id)
+          if (!original) return false
+          return (
+            original.name.toLowerCase().includes(key) ||
+            original.color.toLowerCase().includes(key) ||
+            (original.brand && original.brand.toLowerCase().includes(key)) ||
+            original.material.toLowerCase().includes(key)
+          )
+        })
+      }
+      
+      this.setData({ items: filtered })
+    },
+
     /** 刷新衣物列表和统计数据 */
     refreshData() {
       const allClothes = getAllClothes()
       const clothingStats: ClothingStats = getClothingStats()
-
-      // 按 createdAt 倒序
-      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
-      const displayItems = sorted.map(toDisplayItem)
-
-      // 应用当前筛选
-      const filtered = filterItems(displayItems, this.data.activeFilter, allClothes)
 
       this.setData({
         stats: [
           { label: '总单品', value: String(clothingStats.total) },
           { label: '春夏可穿', value: String(clothingStats.seasonCount) },
           { label: '一周常穿', value: String(clothingStats.weekWorn) }
-        ],
-        items: filtered
+        ]
       })
+
+      this.applyFilters()
     },
 
     /** 打开看板页 */
@@ -202,20 +323,20 @@ createComponent({
 
     /** 点击筛选标签 */
     onTapFilter(e: { currentTarget: { dataset: { filter: string } } }) {
-      const filter = e.currentTarget.dataset.filter
-      const allClothes = getAllClothes()
-      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
-      const displayItems = sorted.map(toDisplayItem)
-      const filtered = filterItems(displayItems, filter, allClothes)
-
-      this.setData({
-        activeFilter: filter,
-        items: filtered
-      })
+      this.setData({ activeFilter: e.currentTarget.dataset.filter })
+      this.applyFilters()
     },
 
     /** 点击衣物卡片 → 跳转详情页 */
     onTapItem(e: { currentTarget: { dataset: { id: string } } }) {
+      if (this.data.multiMode) {
+        this.toggleSelect(e)
+        return
+      }
+      if (this.data.swipeId === e.currentTarget.dataset.id) {
+        this.setData({ swipeId: '' })
+        return
+      }
       const id = e.currentTarget.dataset.id
       wx.navigateTo({
         url: `/pages/clothingDetailPage/index?id=${id}`
@@ -226,6 +347,67 @@ createComponent({
     goAddClothes() {
       wx.switchTab({
         url: '/pages/addClothesPage/index'
+      })
+    },
+
+    /** 长按进入多选模式 */
+    onLongPress(e: { currentTarget: { dataset: { id: string } } }) {
+      if (this.data.multiMode) return
+      ;(wx as any).vibrateShort({ type: 'medium' })
+      this.setData({
+        multiMode: true,
+        selectedIds: [e.currentTarget.dataset.id],
+        swipeId: ''
+      })
+    },
+
+    /** 切换单个选中 */
+    toggleSelect(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      const selected = [...this.data.selectedIds]
+      const idx = selected.indexOf(id)
+      if (idx > -1) {
+        selected.splice(idx, 1)
+      } else {
+        selected.push(id)
+      }
+      this.setData({ selectedIds: selected })
+    },
+
+    /** 全选/取消全选 */
+    toggleSelectAll() {
+      if (this.data.selectedIds.length === this.data.items.length) {
+        this.setData({ selectedIds: [] })
+      } else {
+        this.setData({ selectedIds: this.data.items.map(i => i.id) })
+      }
+    },
+
+    /** 退出多选模式 */
+    exitMultiMode() {
+      this.setData({ multiMode: false, selectedIds: [] })
+    },
+
+    /** 批量删除 */
+    batchDelete() {
+      const { selectedIds } = this.data
+      if (selectedIds.length === 0) {
+        wx.showToast({ title: '请选择要删除的衣物', icon: 'none' })
+        return
+      }
+      wx.showModal({
+        title: '确认删除',
+        content: `确定删除选中的 ${selectedIds.length} 件衣物？`,
+        confirmText: '删除',
+        confirmColor: '#ff2442',
+        success: (res) => {
+          if (res.confirm) {
+            selectedIds.forEach(id => deleteClothing(id))
+            wx.showToast({ title: '已删除', icon: 'success' })
+            this.exitMultiMode()
+            this.refreshData()
+          }
+        }
       })
     }
   }
@@ -317,6 +499,41 @@ createComponent({
   color: #7b685b;
 }
 
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 0 18rpx;
+  height: 76rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 250, 245, 0.98);
+  box-shadow: 0 12rpx 30rpx rgba(92, 63, 39, 0.08);
+}
+
+.search-icon {
+  font-size: 26rpx;
+  color: #8a7768;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  color: #2d241c;
+}
+
+.search-clear {
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 50%;
+  background: #efe3d8;
+  font-size: 20rpx;
+  color: #6d5a4a;
+  line-height: 38rpx;
+  text-align: center;
+}
+
 .action-row {
   display: flex;
   gap: 16rpx;
@@ -397,11 +614,62 @@ createComponent({
 }
 
 .wardrobe-item {
+  position: relative;
+  overflow: hidden;
   width: 48%;
   margin-bottom: 20rpx;
-  padding: 18rpx;
   border-radius: 24rpx;
   background: #fffaf6;
+  animation: fadeSlideUp 0.4s ease-out backwards;
+}
+
+.wardrobe-item:nth-child(1) { animation-delay: 0.05s; }
+.wardrobe-item:nth-child(2) { animation-delay: 0.1s; }
+.wardrobe-item:nth-child(3) { animation-delay: 0.15s; }
+.wardrobe-item:nth-child(4) { animation-delay: 0.2s; }
+.wardrobe-item:nth-child(5) { animation-delay: 0.25s; }
+.wardrobe-item:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wardrobe-item--swiped .item-inner {
+  transform: translateX(-160rpx);
+}
+
+.item-inner {
+  position: relative;
+  z-index: 2;
+  padding: 18rpx;
+  background: #fffaf6;
+  transition: transform 0.3s ease;
+}
+
+.item-delete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff3b30;
+  z-index: 1;
+}
+
+.item-delete-text {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 500;
 }
 
 .item-cover {
@@ -467,6 +735,134 @@ createComponent({
 
 .item-scene {
   color: #1f3c34;
+}
+
+/* 多选模式 */
+.wardrobe-item--multi {
+  transition: all 0.3s ease;
+}
+
+.wardrobe-item--selected {
+  transform: scale(0.95);
+  box-shadow: 0 0 0 4rpx #1f3c34;
+}
+
+.item-check {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.item-check--active {
+  background: #1f3c34;
+  border-color: #1f3c34;
+}
+
+.item-check-icon {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.multi-bar {
+  position: fixed;
+  bottom: 170rpx;
+  left: 24rpx;
+  right: 24rpx;
+  height: 100rpx;
+  background: rgba(255, 250, 245, 0.98);
+  border-radius: 28rpx;
+  box-shadow: 0 -8rpx 32rpx rgba(92, 63, 39, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28rpx;
+  z-index: 100;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(120rpx);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.multi-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.multi-bar-check {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.multi-bar-check--active {
+  background: #1f3c34;
+  border-color: #1f3c34;
+}
+
+.multi-bar-check-icon {
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.multi-bar-label {
+  font-size: 26rpx;
+  color: #2d241c;
+  font-weight: 500;
+}
+
+.multi-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.multi-bar-btn {
+  padding: 16rpx 32rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.multi-bar-btn--cancel {
+  background: #efe3d8;
+  color: #6d5a4a;
+}
+
+.multi-bar-btn--delete {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.multi-bar-btn-text {
+  font-size: 26rpx;
+  font-weight: 600;
 }
 
 /* 空状态 */

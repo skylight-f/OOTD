@@ -31,6 +31,12 @@ export interface ClothingItem {
   tone: string
   /** 品牌（可选） */
   brand: string
+  /** 尺码（可选） */
+  size: string
+  /** 价格（可选） */
+  price: string
+  /** 是否收藏（可选，默认 false） */
+  favorite?: boolean
   /** 图标（UI 展示用，非持久化字段） */
   icon?: string
   /** 创建时间戳 */
@@ -142,6 +148,9 @@ export function addClothing(input: ClothingInput): ClothingItem {
     imagePath: input.imagePath,
     tone: input.tone,
     brand: input.brand,
+    size: input.size,
+    price: input.price,
+    favorite: input.favorite ?? false,
     createdAt: now,
     wearCount: 0,
     lastWornAt: 0
@@ -198,6 +207,28 @@ export function deleteClothing(id: string): boolean {
 
   writeClothesList(filtered)
   return true
+}
+
+/**
+ * 切换衣物收藏状态
+ * @param id 衣物 ID
+ * @returns 切换后的衣物对象，未找到返回 undefined
+ */
+export function toggleFavorite(id: string): ClothingItem | undefined {
+  const list = readClothesList()
+  const index = list.findIndex((item) => item.id === id)
+
+  if (index === -1) {
+    return undefined
+  }
+
+  list[index] = {
+    ...list[index],
+    favorite: !list[index].favorite
+  }
+  writeClothesList(list)
+
+  return list[index]
 }
 
 // ============================================================
@@ -357,5 +388,27 @@ export function deleteOutfit(id: string): boolean {
   const filtered = list.filter((i) => i.id !== id)
   if (filtered.length === list.length) return false
   writeOutfitList(filtered)
+  return true
+}
+
+export function recordOutfitWear(id: string): boolean {
+  const list = readOutfitList()
+  const index = list.findIndex((item) => item.id === id)
+  if (index === -1) return false
+
+  const current = list[index]
+  const now = Date.now()
+
+  list[index] = {
+    ...current,
+    wearCount: current.wearCount + 1,
+    lastWornAt: now
+  }
+
+  writeOutfitList(list)
+  current.clothingIds.forEach((clothingId) => {
+    recordWear(clothingId)
+  })
+
   return true
 }

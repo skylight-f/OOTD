@@ -11,8 +11,8 @@
         </view>
 
         <view class="nav-actions">
-          <text class="nav-icon nav-icon--search"></text>
-          <text class="nav-icon nav-icon--calendar"></text>
+          <text class="nav-icon nav-icon--search" bindtap="onTapNavSearch"></text>
+          <text class="nav-icon nav-icon--calendar" bindtap="onTapNavCalendar"></text>
         </view>
       </view>
 
@@ -46,6 +46,7 @@
         <view wx:for="{{waterfallColumns}}" wx:for-item="column" wx:for-index="columnIndex" wx:key="columnIndex" class="waterfall-column">
           <view wx:for="{{column}}" wx:for-item="card" wx:key="id" class="masonry-card" data-id="{{card.id}}" data-type="{{card.type}}" bindtap="goWaterfallCard">
             <view class="card-cover card-cover--{{card.tone}} card-cover--{{card.size}}">
+              <image wx:if="{{card.imagePath}}" class="card-image" src="{{card.imagePath}}" mode="aspectFill" />
               <view class="cover-shine"></view>
               <text class="cover-label">{{card.label}}</text>
               <text wx:if="{{card.isVideo}}" class="video-mark">▶</text>
@@ -81,6 +82,16 @@
           <text class="panel-label">今日主张</text>
           <text class="panel-title">{{recommendation.title}}</text>
           <text class="panel-desc">{{recommendation.description}}</text>
+        </view>
+      </view>
+
+      <!-- 空衣橱引导 -->
+      <view wx:if="{{wardrobeEmpty}}" class="section-card wardrobe-guide">
+        <view class="guide-icon">👗</view>
+        <text class="guide-title">衣橱还是空的</text>
+        <text class="guide-desc">先添加几件衣物，才能获得更精准的穿搭推荐哦</text>
+        <view class="guide-btn" bindtap="goAddClothes">
+          <text class="guide-btn-text">去添加衣物</text>
         </view>
       </view>
 
@@ -316,6 +327,7 @@ interface WaterfallCard {
   scene: string
   record: string
   label: string
+  imagePath: string
   tone: string
   size: string
   isVideo: boolean
@@ -331,10 +343,12 @@ function toneToClass(tone: string): string {
 /** 从穿搭记录和有穿着记录的衣物生成瀑布流卡片 */
 function buildWaterfallCards(): WaterfallCard[][] {
   const cards: WaterfallCard[] = []
+  const clothes = getAllClothes()
 
   // ① 搭配记录 → 卡片
   const outfits = getAllOutfits()
   outfits.forEach((o: OutfitItem) => {
+    const previewImage = clothes.find((item) => o.clothingIds.includes(item.id) && item.imagePath)?.imagePath || ''
     cards.push({
       id: o.id,
       type: 'outfit',
@@ -342,6 +356,7 @@ function buildWaterfallCards(): WaterfallCard[][] {
       scene: o.scene || '搭配记录',
       record: o.wearCount > 0 ? `已穿 ${o.wearCount} 次` : '待穿搭',
       label: o.name.length > 6 ? o.name.slice(0, 6) + '…' : o.name,
+      imagePath: previewImage,
       tone: toneToClass(o.tone),
       size: 'tall',
       isVideo: false
@@ -349,8 +364,7 @@ function buildWaterfallCards(): WaterfallCard[][] {
   })
 
   // ② 有穿着记录的衣物 → 卡片
-  const clothes = getAllClothes().filter((c) => c.wearCount > 0)
-  clothes.forEach((c: ClothingItem) => {
+  clothes.filter((c) => c.wearCount > 0).forEach((c: ClothingItem) => {
     cards.push({
       id: c.id,
       type: 'clothing',
@@ -358,6 +372,7 @@ function buildWaterfallCards(): WaterfallCard[][] {
       scene: c.category || '穿搭记录',
       record: `已穿 ${c.wearCount} 次`,
       label: c.category,
+      imagePath: c.imagePath || '',
       tone: toneToClass(c.tone),
       size: 'mid',
       isVideo: false
@@ -416,7 +431,8 @@ createComponent({
     reasons: [] as Array<{ title: string; desc: string }>,
     agendas: [] as Array<{ title: string; desc: string }>,
     wardrobeMatchCount: 0,
-    matchedOutfitIds: [] as string[]
+    matchedOutfitIds: [] as string[],
+    wardrobeEmpty: false
   },
   attached() {
     // 获取状态栏高度
@@ -435,6 +451,16 @@ createComponent({
   },
 
   methods: {
+    onTapNavSearch() {
+      this.setHomeTab('recommend')
+    },
+
+    onTapNavCalendar() {
+      wx.switchTab({
+        url: '/pages/outfitPage/index'
+      })
+    },
+
     async loadWeather() {
       this.setData({ weatherLoading: true })
 
@@ -457,6 +483,8 @@ createComponent({
         const reasons = buildReasons(weatherData)
         const agendas = buildAgendas(weatherData)
 
+        const wardrobeEmpty = clothes.length === 0
+
         this.setData({
           weather: {
             city: weatherData.city,
@@ -470,6 +498,7 @@ createComponent({
           reasons,
           agendas,
           wardrobeMatchCount,
+          wardrobeEmpty,
           weatherLoading: false
         })
       } catch (error) {
@@ -534,6 +563,11 @@ createComponent({
       if (id) {
         wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${id}` })
       }
+    },
+
+    /** 点击空衣橱引导 → 跳转添加衣物 */
+    goAddClothes() {
+      wx.switchTab({ url: '/pages/addClothesPage/index' })
     },
 
     /** 点击瀑布流卡片 → 跳转搭配/衣物详情 */
@@ -844,6 +878,23 @@ createComponent({
   border-radius: 8rpx;
   background: #ffffff;
   box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+  animation: fadeSlideUp 0.4s ease-out backwards;
+}
+
+.masonry-card:nth-child(1) { animation-delay: 0.05s; }
+.masonry-card:nth-child(2) { animation-delay: 0.1s; }
+.masonry-card:nth-child(3) { animation-delay: 0.15s; }
+.masonry-card:nth-child(4) { animation-delay: 0.2s; }
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card-cover {
@@ -854,6 +905,13 @@ createComponent({
   padding: 22rpx;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .card-cover--small {
@@ -936,6 +994,7 @@ createComponent({
   position: absolute;
   top: -60rpx;
   right: -70rpx;
+  z-index: 1;
   width: 190rpx;
   height: 190rpx;
   border-radius: 50%;
@@ -960,6 +1019,7 @@ createComponent({
   position: absolute;
   right: 18rpx;
   top: 18rpx;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1276,6 +1336,48 @@ createComponent({
   font-size: 22rpx;
   line-height: 1.6;
   color: #776457;
+}
+
+/* 空衣橱引导 */
+.wardrobe-guide {
+  padding: 40rpx;
+  text-align: center;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+}
+
+.guide-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.guide-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ff2442;
+  margin-bottom: 12rpx;
+}
+
+.guide-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #666666;
+  line-height: 1.5;
+  margin-bottom: 30rpx;
+}
+
+.guide-btn {
+  display: inline-block;
+  padding: 20rpx 60rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #ff2442 0%, #ff6b6b 100%);
+  box-shadow: 0 8rpx 20rpx rgba(255, 36, 66, 0.3);
+}
+
+.guide-btn-text {
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
 }
 </style>
 

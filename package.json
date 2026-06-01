@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "mpx-cli-service serve --targets=wx,web",
+    "serve": "mpx-cli-service serve",
     "build": "mpx-cli-service build --targets=wx,web"
   },
   "dependencies": {

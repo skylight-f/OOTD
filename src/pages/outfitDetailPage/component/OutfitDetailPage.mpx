@@ -5,7 +5,7 @@
       <text class="empty-text">搭配不存在</text>
     </view>
 
-    <block wx:else>
+    <view wx:else class="detail-content">
       <!-- 搭配信息头部 -->
       <view class="hero-card">
         <view class="hero-tone hero-tone--{{outfit.tone}}"></view>
@@ -44,6 +44,25 @@
         </view>
       </view>
 
+      <!-- 穿着统计 -->
+      <view class="section-card stats-card">
+        <text class="section-title">穿着统计</text>
+        <view class="detail-stats">
+          <view class="detail-stat">
+            <text class="detail-stat-value">{{outfit.wearCount}}</text>
+            <text class="detail-stat-label">穿着次数</text>
+          </view>
+          <view class="detail-stat">
+            <text class="detail-stat-value">{{lastWornText}}</text>
+            <text class="detail-stat-label">最后一次穿着</text>
+          </view>
+          <view class="detail-stat">
+            <text class="detail-stat-value">{{createdText}}</text>
+            <text class="detail-stat-label">创建时间</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 操作按钮 -->
       <view class="action-row">
         <view class="action-btn action-btn--wear" bindtap="handleWear" hover-class="action-btn--pressed">
@@ -53,14 +72,21 @@
           <text class="action-text">删除搭配</text>
         </view>
       </view>
-    </block>
+    </view>
   </view>
 </template>
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllOutfits, deleteOutfit, addOutfit, getClothingById, inferTone, categoryToIcon, type OutfitItem, type ClothingItem } from '@/utils/storage'
+import { getAllOutfits, deleteOutfit, getClothingById, inferTone, categoryToIcon, recordOutfitWear, type OutfitItem, type ClothingItem } from '@/utils/storage'
 
+function formatDate(timestamp: number): string {
+  if (!timestamp) return '暂无记录'
+  const d = new Date(timestamp)
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  return `${month}月${day}日`
+}
 
 interface DisplayCloth {
   id: string; name: string; category: string; color: string; tone: string; icon: string; imagePath: string
@@ -80,7 +106,9 @@ createComponent({
 
   data: {
     outfit: null as OutfitItem | null,
-    clothesList: [] as DisplayCloth[]
+    clothesList: [] as DisplayCloth[],
+    lastWornText: '暂无记录',
+    createdText: ''
   },
 
   observers: {
@@ -100,7 +128,12 @@ createComponent({
         .filter(Boolean)
         .map((c) => toDisplay(c!))
 
-      this.setData({ outfit, clothesList: list })
+      this.setData({
+        outfit,
+        clothesList: list,
+        lastWornText: formatDate(outfit.lastWornAt),
+        createdText: formatDate(outfit.createdAt)
+      })
     }
   },
 
@@ -110,6 +143,21 @@ createComponent({
     },
 
     handleWear() {
+      const outfit = this.data.outfit
+      if (!outfit) return
+
+      const success = recordOutfitWear(outfit.id)
+      if (!success) {
+        wx.showToast({ title: '记录失败', icon: 'none' })
+        return
+      }
+
+      const updatedOutfit = getAllOutfits().find((item) => item.id === outfit.id) || outfit
+      this.setData({
+        outfit: updatedOutfit,
+        lastWornText: formatDate(updatedOutfit.lastWornAt),
+        createdText: formatDate(updatedOutfit.createdAt)
+      })
       wx.showToast({ title: '已记录穿着', icon: 'success' })
     },
 
@@ -324,6 +372,44 @@ createComponent({
   font-size: 26rpx;
   font-weight: 600;
   color: #333333;
+}
+
+/* 穿着统计卡片 */
+.stats-card {
+  margin-top: 24rpx;
+}
+
+.stats-card .section-title {
+  margin-bottom: 20rpx;
+}
+
+.detail-stats {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.detail-stat {
+  flex: 1;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: #fafafa;
+  text-align: center;
+}
+
+.detail-stat-value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ff2442;
+  line-height: 1.2;
+}
+
+.detail-stat-label {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
 }
 </style>
 
