@@ -1,0 +1,18 @@
+<template>
+  <ClosetDashboardPage />
+</template>
+
+<script lang="ts">
+import { createPage } from '@mpxjs/core'
+
+createPage({})
+</script>
+
+<script type="application/json">
+  {
+    "navigationBarTitleText": "衣橱看板",
+    "usingComponents": {
+      "ClosetDashboardPage": "./component/ClosetDashboardPage"
+    }
+  }
+</script>

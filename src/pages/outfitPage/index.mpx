@@ -1,5 +1,5 @@
 <template>
-  <ClosetPage />
+  <OutfitPage />
 </template>
 
 <script lang="ts">
@@ -8,16 +8,16 @@ import { setCustomTabBarSelected } from '@/utils/tabBar'
 
 createPage({
   onShow() {
-    setCustomTabBarSelected(this, 1)
+    setCustomTabBarSelected(this, 3)
   }
 })
 </script>
 
 <script type="application/json">
   {
-    "navigationBarTitleText": "衣橱",
+    "navigationBarTitleText": "搭配",
     "usingComponents": {
-      "ClosetPage": "./component/ClosetPage"
+      "OutfitPage": "./component/OutfitPage"
     }
   }
 </script>

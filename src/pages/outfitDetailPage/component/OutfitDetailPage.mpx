@@ -1,0 +1,332 @@
+<template>
+  <view class="page detail-page">
+    <!-- 空状态 -->
+    <view wx:if="{{!outfit}}" class="empty">
+      <text class="empty-text">搭配不存在</text>
+    </view>
+
+    <block wx:else>
+      <!-- 搭配信息头部 -->
+      <view class="hero-card">
+        <view class="hero-tone hero-tone--{{outfit.tone}}"></view>
+        <view class="hero-info">
+          <text class="hero-scene">{{outfit.scene}}</text>
+          <text class="hero-name">{{outfit.name}}</text>
+          <text wx:if="{{outfit.description}}" class="hero-desc">{{outfit.description}}</text>
+        </view>
+      </view>
+
+      <!-- 包含的单品 -->
+      <view class="section-card">
+        <view class="section-head">
+          <text class="section-title">包含单品（{{clothesList.length}} 件）</text>
+        </view>
+
+        <view wx:if="{{clothesList.length === 0}}" class="hint">
+          <text class="hint-text">该搭配中的衣物已被删除</text>
+        </view>
+
+        <view wx:else class="clothes-row">
+          <view
+            wx:for="{{clothesList}}"
+            wx:key="id"
+            class="cloth-card"
+            data-id="{{item.id}}"
+            bindtap="goClothingDetail"
+          >
+            <view class="cloth-cover cloth-cover--{{item.tone}}">
+              <image wx:if="{{item.imagePath}}" class="cloth-image" src="{{item.imagePath}}" mode="aspectFill" />
+              <text wx:else class="cloth-icon">{{item.icon}}</text>
+            </view>
+            <text class="cloth-name">{{item.name}}</text>
+            <text class="cloth-meta">{{item.category}} · {{item.color}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="action-row">
+        <view class="action-btn action-btn--wear" bindtap="handleWear" hover-class="action-btn--pressed">
+          <text class="action-text">记录穿着</text>
+        </view>
+        <view class="action-btn action-btn--delete" bindtap="showDeleteConfirm" hover-class="action-btn--pressed">
+          <text class="action-text">删除搭配</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+import { getAllOutfits, deleteOutfit, addOutfit, getClothingById, inferTone, categoryToIcon, type OutfitItem, type ClothingItem } from '@/utils/storage'
+
+
+interface DisplayCloth {
+  id: string; name: string; category: string; color: string; tone: string; icon: string; imagePath: string
+}
+
+function toDisplay(item: ClothingItem): DisplayCloth {
+  return {
+    id: item.id, name: item.name, category: item.category, color: item.color,
+    tone: item.tone || inferTone(item.color), icon: categoryToIcon(item.category), imagePath: item.imagePath
+  }
+}
+
+createComponent({
+  properties: {
+    outfitId: String
+  },
+
+  data: {
+    outfit: null as OutfitItem | null,
+    clothesList: [] as DisplayCloth[]
+  },
+
+  observers: {
+    outfitId(id: string) {
+      if (!id) return
+
+      const outfits = getAllOutfits()
+      const outfit = outfits.find((o) => o.id === id)
+      if (!outfit) {
+        wx.showToast({ title: '搭配不存在', icon: 'none' })
+        setTimeout(() => wx.navigateBack(), 500)
+        return
+      }
+
+      const list = outfit.clothingIds
+        .map((cid) => getClothingById(cid))
+        .filter(Boolean)
+        .map((c) => toDisplay(c!))
+
+      this.setData({ outfit, clothesList: list })
+    }
+  },
+
+  methods: {
+    goClothingDetail(e: { currentTarget: { dataset: { id: string } } }) {
+      wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${e.currentTarget.dataset.id}` })
+    },
+
+    handleWear() {
+      wx.showToast({ title: '已记录穿着', icon: 'success' })
+    },
+
+    showDeleteConfirm() {
+      const outfit = this.data.outfit
+      if (!outfit) return
+      wx.showModal({
+        title: '确认删除',
+        content: `确定要删除「${outfit.name}」吗？`,
+        confirmText: '删除',
+        confirmColor: '#ff2442',
+        success: (res: any) => {
+          if (res.confirm) {
+            deleteOutfit(outfit.id)
+            wx.showToast({ title: '已删除', icon: 'success' })
+            setTimeout(() => wx.navigateBack(), 800)
+          }
+        }
+      })
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 60rpx;
+  background: #f6f6f6;
+  box-sizing: border-box;
+}
+
+.empty {
+  padding: 120rpx 40rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+.hero-card {
+  display: flex;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0,0,0,0.05);
+}
+
+.hero-tone {
+  width: 16rpx;
+  flex-shrink: 0;
+}
+
+.hero-tone--oat { background: #e5d7c3; }
+.hero-tone--blue { background: #769fc4; }
+.hero-tone--cream { background: #d4b896; }
+.hero-tone--black { background: #535252; }
+.hero-tone--green { background: #6c8f7a; }
+.hero-tone--brown { background: #c5936b; }
+.hero-tone--red { background: #d4a0a0; }
+.hero-tone--pink { background: #e0b8c4; }
+.hero-tone--gray { background: #b5b5b5; }
+.hero-tone--white { background: #e0e0e0; }
+
+.hero-info {
+  flex: 1;
+  padding: 32rpx;
+}
+
+.hero-scene {
+  display: inline-block;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
+  background: #f0f0f0;
+  font-size: 22rpx;
+  color: #555555;
+  font-weight: 600;
+}
+
+.hero-name {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.hero-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #696969;
+}
+
+.section-card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.04);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.hint {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  text-align: center;
+  background: #f8f8f8;
+  border-radius: 12rpx;
+}
+
+.hint-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.clothes-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.cloth-card {
+  width: calc(25% - 12rpx);
+  padding: 12rpx;
+  border-radius: 12rpx;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.cloth-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120rpx;
+  border-radius: 10rpx;
+  overflow: hidden;
+}
+
+.cloth-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
+.cloth-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
+.cloth-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
+.cloth-cover--black { background: linear-gradient(180deg, #535252, #989592); }
+.cloth-cover--green { background: linear-gradient(180deg, #bfd0c6, #f0f7f2); }
+.cloth-cover--brown { background: linear-gradient(180deg, #c5936b, #f4e7dc); }
+.cloth-cover--red { background: linear-gradient(180deg, #d4a0a0, #f5e6e6); }
+.cloth-cover--pink { background: linear-gradient(180deg, #e0b8c4, #f8edf2); }
+.cloth-cover--gray { background: linear-gradient(180deg, #b5b5b5, #e8e8e8); }
+.cloth-cover--white { background: linear-gradient(180deg, #e8e8e8, #f8f8f8); }
+
+.cloth-image { width: 100%; height: 100%; }
+
+.cloth-icon {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: rgba(34,28,24,0.6);
+}
+
+.cloth-name {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #333333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloth-meta {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #999999;
+}
+
+.action-row {
+  display: flex;
+  margin-top: 28rpx;
+  gap: 16rpx;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 22rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn--pressed { opacity: 0.8; }
+
+.action-btn--wear { background: #e8f5e9; }
+.action-btn--delete { background: #fce4ec; }
+
+.action-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+}
+</style>
+
+<script type="application/json">
+  { "component": true }
+</script>

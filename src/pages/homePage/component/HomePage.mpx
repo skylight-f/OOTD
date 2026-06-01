@@ -1,63 +1,134 @@
 <template>
-  <view class="page home-page">
-    <view class="hero-card">
-      <view class="hero-main">
-        <text class="eyebrow">天气驱动推荐</text>
-        <text class="city">{{weather.city}}</text>
-        <text class="summary">{{weather.summary}}</text>
-        <view class="temperature-row">
-          <text class="temperature">{{weather.temperature}}°</text>
-          <text class="range">{{weather.low}}° / {{weather.high}}°</text>
+  <view class="page home-page home-page--{{transitionDirection}}" bindtouchstart="handleTabTouchStart" bindtouchend="handleTabTouchEnd">
+    <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+      <view class="nav-content">
+        <view class="nav-main">
+          <text class="nav-title">OOTD</text>
+          <view class="nav-weather">
+            <text class="nav-weather-dot"></text>
+            <text>{{weather.city}} {{weather.temperature}}°</text>
+          </view>
         </view>
-        <view class="tag-row">
-          <text wx:for="{{weather.tags}}" wx:key="*this" class="tag">{{item}}</text>
+
+        <view class="nav-actions">
+          <text class="nav-icon nav-icon--search"></text>
+          <text class="nav-icon nav-icon--calendar"></text>
         </view>
       </view>
 
-      <view class="hero-panel">
-        <text class="panel-label">今日主张</text>
-        <text class="panel-title">{{recommendation.title}}</text>
-        <text class="panel-desc">{{recommendation.description}}</text>
+      <view class="home-tabs">
+        <text
+          wx:for="{{homeTabs}}"
+          wx:key="key"
+          class="home-tab {{activeTab === item.key ? 'home-tab--active' : ''}}"
+          data-tab="{{item.key}}"
+          bindtap="switchHomeTab"
+        >{{item.label}}</text>
       </view>
     </view>
 
-    <view class="section-card">
-      <view class="section-head">
-        <text class="section-title">推荐搭配</text>
-        <text class="section-subtitle">适合 {{recommendation.scene}}</text>
+    <view wx:if="{{activeTab === 'recommend'}}" class="recommend-panel panel-motion">
+      <view class="feed-tools">
+        <view class="city-pill">
+          <text class="city-dot"></text>
+          <text>{{weather.city}}</text>
+        </view>
+        <text class="search-icon"></text>
       </view>
 
-      <view class="formula-list">
-        <view wx:for="{{recommendation.items}}" wx:key="name" class="formula-item">
-          <view class="formula-badge">{{index + 1}}</view>
-          <view class="formula-body">
-            <text class="formula-name">{{item.name}}</text>
-            <text class="formula-meta">{{item.role}} · {{item.reason}}</text>
+      <view wx:if="{{waterfallColumns[0].length === 0 && waterfallColumns[1].length === 0}}" class="waterfall-empty">
+        <view class="empty-icon">👗</view>
+        <text class="empty-title">还没有穿搭记录</text>
+        <text class="empty-desc">添加衣物后创建你的第一套搭配吧</text>
+      </view>
+
+      <view wx:else class="waterfall">
+        <view wx:for="{{waterfallColumns}}" wx:for-item="column" wx:for-index="columnIndex" wx:key="columnIndex" class="waterfall-column">
+          <view wx:for="{{column}}" wx:for-item="card" wx:key="id" class="masonry-card" data-id="{{card.id}}" data-type="{{card.type}}" bindtap="goWaterfallCard">
+            <view class="card-cover card-cover--{{card.tone}} card-cover--{{card.size}}">
+              <view class="cover-shine"></view>
+              <text class="cover-label">{{card.label}}</text>
+              <text wx:if="{{card.isVideo}}" class="video-mark">▶</text>
+            </view>
+            <view class="card-body">
+              <text class="card-title">{{card.title}}</text>
+              <view class="card-meta">
+                <text class="record-scene">{{card.scene}}</text>
+                <text class="record-count">{{card.record}}</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>
     </view>
 
-    <view class="section-card tips-card">
-      <view class="section-head">
-        <text class="section-title">推荐理由</text>
-        <text class="section-subtitle">兼顾天气和通勤舒适度</text>
-      </view>
+    <view wx:else class="weather-panel panel-motion">
+      <view class="hero-card">
+        <view class="hero-main">
+          <text class="eyebrow">天气驱动推荐</text>
+          <text class="city">{{weather.city}}</text>
+          <text class="summary">{{weather.summary}}</text>
+          <view class="temperature-row">
+            <text class="temperature">{{weather.temperature}}°</text>
+            <text class="range">{{weather.low}}° / {{weather.high}}°</text>
+          </view>
+          <view class="tag-row">
+            <text wx:for="{{weather.tags}}" wx:key="*this" class="tag">{{item}}</text>
+          </view>
+        </view>
 
-      <view class="reason-list">
-        <view wx:for="{{reasons}}" wx:key="title" class="reason-item">
-          <text class="reason-title">{{item.title}}</text>
-          <text class="reason-desc">{{item.desc}}</text>
+        <view class="hero-panel">
+          <text class="panel-label">今日主张</text>
+          <text class="panel-title">{{recommendation.title}}</text>
+          <text class="panel-desc">{{recommendation.description}}</text>
         </view>
       </view>
-    </view>
 
-    <view class="section-card agenda-card">
-      <text class="section-title">今日穿搭提醒</text>
-      <view class="agenda-grid">
-        <view wx:for="{{agendas}}" wx:key="title" class="agenda-item">
-          <text class="agenda-title">{{item.title}}</text>
-          <text class="agenda-desc">{{item.desc}}</text>
+      <view class="section-card">
+        <view class="section-head">
+          <text class="section-title">推荐搭配</text>
+          <text class="section-subtitle">适合 {{recommendation.scene}}</text>
+        </view>
+
+        <view wx:if="{{wardrobeMatchCount > 0}}" class="wardrobe-hint">
+          <text class="wardrobe-hint-text">{{wardrobeMatchCount}} 件来自你的衣橱</text>
+        </view>
+
+        <view class="formula-list">
+          <view wx:for="{{recommendation.items}}" wx:key="name" class="formula-item" data-id="{{item.clothingId}}" bindtap="{{item.fromWardrobe ? 'goClothingDetail' : ''}}">
+            <view class="formula-badge {{item.fromWardrobe ? 'formula-badge--matched' : ''}}">{{item.fromWardrobe ? '✓' : index + 1}}</view>
+            <view class="formula-body">
+              <view class="formula-name-row">
+                <text class="formula-name">{{item.name}}</text>
+                <text wx:if="{{item.fromWardrobe}}" class="wardrobe-badge">衣橱</text>
+              </view>
+              <text class="formula-meta">{{item.role}} · {{item.reason}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card tips-card">
+        <view class="section-head">
+          <text class="section-title">推荐理由</text>
+          <text class="section-subtitle">兼顾天气和通勤舒适度</text>
+        </view>
+
+        <view class="reason-list">
+          <view wx:for="{{reasons}}" wx:key="title" class="reason-item">
+            <text class="reason-title">{{item.title}}</text>
+            <text class="reason-desc">{{item.desc}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card agenda-card">
+        <text class="section-title">今日穿搭提醒</text>
+        <view class="agenda-grid">
+          <view wx:for="{{agendas}}" wx:key="title" class="agenda-item">
+            <text class="agenda-title">{{item.title}}</text>
+            <text class="agenda-desc">{{item.desc}}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -66,38 +137,414 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
+import { getWeatherInfo, type WeatherInfo } from '@/utils/weather'
+import { getCurrentLocation } from '@/utils/location'
+import { getAllClothes, getAllOutfits, type ClothingItem, type OutfitItem } from '@/utils/storage'
 
-createComponent({
-  data: {
-    weather: {
-      city: '上海',
-      summary: '多云转小雨，体感偏凉',
-      temperature: 21,
-      low: 18,
-      high: 24,
-      tags: ['通勤日', '午后有雨', '适合叠穿']
-    },
-    recommendation: {
-      title: '轻层次通勤风',
-      description: '用轻薄外套和柔和色系拉开层次，兼顾办公室冷气和下班降温。',
+type HomeTabEvent = {
+  currentTarget: {
+    dataset: {
+      tab: string
+    }
+  }
+}
+
+type TouchPoint = {
+  clientX: number
+  clientY: number
+}
+
+type HomeTouchEvent = {
+  touches?: TouchPoint[]
+  changedTouches?: TouchPoint[]
+}
+
+
+const homeTabKeys = ['weather', 'recommend']
+
+/** 类别角色映射（推荐角色 → 衣橱类别） */
+function roleToCategory(role: string): string {
+  const map: Record<string, string> = {
+    '外套': '外套', '内搭': '上装', '上装': '上装',
+    '下装': '下装', '鞋履': '鞋履', '配饰': '配饰'
+  }
+  return map[role] || role
+}
+
+/** 衣橱匹配推荐单品 */
+function matchWardrobe(
+  items: Array<{ name: string; role: string; reason: string }>,
+  clothes: ClothingItem[]
+): Array<{ name: string; role: string; reason: string; fromWardrobe: boolean; clothingId?: string }> {
+  return items.map((item) => {
+    const category = roleToCategory(item.role)
+    const match = clothes.find((c) => c.category === category)
+    if (match) {
+      return {
+        name: match.name,
+        role: item.role,
+        reason: item.reason,
+        fromWardrobe: true,
+        clothingId: match.id
+      }
+    }
+    return { ...item, fromWardrobe: false }
+  })
+}
+
+/** 根据温度生成穿搭建议数据 */
+function buildRecommendation(weather: WeatherInfo) {
+  const { temperature, low, high, condition } = weather
+  const tempRange = high - low
+
+  // 根据温度选择穿搭方向
+  if (temperature <= 10) {
+    return {
+      title: '暖层叠穿方案',
+      description: '气温较低，建议以内搭+中层保暖+防风外套的三层结构出门，兼顾保暖和行动自由度。',
+      scene: '寒冷天气通勤',
+      items: [
+        { name: '高领毛衣', role: '内搭', reason: '贴身保暖，减少冷风灌入' },
+        { name: '羊毛大衣', role: '外套', reason: '挡风效果优于普通棉服' },
+        { name: '深色直筒裤', role: '下装', reason: '厚实面料更适合低温' },
+        { name: '皮靴', role: '鞋履', reason: '保暖且防滑' }
+      ]
+    }
+  } else if (temperature <= 18) {
+    return {
+      title: '轻保暖通勤风',
+      description: '温度适中偏凉，一件轻薄外套搭配基础内搭即可，注重层次感避免单调。',
       scene: '办公室 + 下班外出',
       items: [
-        { name: '奶油色风衣', role: '外套', reason: '早晚温差大时更从容' },
+        { name: '薄款针织衫', role: '内搭', reason: '办公室温度下不会闷热' },
+        { name: '休闲西装', role: '外套', reason: '兼顾通勤感和适度保暖' },
+        { name: '深色休闲裤', role: '下装', reason: '百搭且适合多种场合' },
+        { name: '帆布鞋', role: '鞋履', reason: '轻便舒适适合日常' }
+      ]
+    }
+  } else if (temperature <= 25) {
+    return {
+      title: '轻层次通勤风',
+      description: `用轻薄外套和柔和色系拉开层次，兼顾办公室冷气和${condition.includes('雨') ? '外出防雨' : '下班降温'}。`,
+      scene: '办公室 + 下班外出',
+      items: [
+        { name: '奶油色风衣', role: '外套', reason: tempRange >= 6 ? '早晚温差大时更从容' : '轻薄有型' },
         { name: '雾蓝衬衫', role: '内搭', reason: '低饱和蓝色更显干净' },
         { name: '深灰直筒裤', role: '下装', reason: '稳住通勤感并显利落' },
         { name: '黑色乐福鞋', role: '鞋履', reason: '应对通勤步行和正式场景' }
       ]
-    },
-    reasons: [
-      { title: '防小雨', desc: '轻薄风衣更适合今天的阵雨和地铁空调环境。' },
-      { title: '不过度厚重', desc: '21 度体感不需要厚针织，避免午后闷热。' },
-      { title: '适配通勤', desc: '整体色调克制，适合办公室和下班见面场景。' }
+    }
+  } else {
+    return {
+      title: '清爽极简风',
+      description: '气温较高，选择透气面料和浅色系，减少层次保持清凉感。',
+      scene: '日常通勤',
+      items: [
+        { name: '浅色短袖T恤', role: '上装', reason: '透气面料应对高温' },
+        { name: '棉麻短裤/裙', role: '下装', reason: '宽松版型更凉爽' },
+        { name: '凉鞋或帆布鞋', role: '鞋履', reason: '轻便透气' },
+        { name: '遮阳帽', role: '配饰', reason: condition.includes('晴') ? '紫外线较强需注意防晒' : '搭配加分项' }
+      ]
+    }
+  }
+}
+
+/** 根据天气生成推荐理由 */
+function buildReasons(weather: WeatherInfo) {
+  const { condition, temperature, humidity, feelsLike } = weather
+  const reasons: Array<{ title: string; desc: string }> = []
+
+  if (condition.includes('雨')) {
+    reasons.push({ title: '防雨', desc: `${condition.includes('大') ? '今天雨势较大' : '今天有雨'}，建议携带雨具并选择防水面料。` })
+  }
+  if (temperature > 28) {
+    reasons.push({ title: '防暑', desc: `气温 ${temperature}°，选择透气材质并适当防晒。` })
+  }
+  if (temperature < 10) {
+    reasons.push({ title: '防寒', desc: `气温仅 ${temperature}°，注意保暖防风。` })
+  }
+  if (humidity > 75) {
+    reasons.push({ title: '湿度', desc: '空气湿度较高，建议选择透气面料避免闷热感。' })
+  }
+  if (Math.abs(temperature - feelsLike) >= 3) {
+    reasons.push({ title: '体感', desc: `体感温度 ${feelsLike}°，${feelsLike < temperature ? '偏凉' : '偏暖'}，注意调整穿着。` })
+  }
+  if (reasons.length === 0) {
+    reasons.push({ title: '舒适', desc: `今天天气适宜，${temperature}° 体感舒适，轻松出门即可。` })
+  }
+  reasons.push({ title: '适配通勤', desc: '整体色调克制，适合办公室和下班见面场景。' })
+
+  return reasons.slice(0, 3)
+}
+
+/** 根据天气生成今日提醒 */
+function buildAgendas(weather: WeatherInfo) {
+  const { condition, temperature, high, low } = weather
+  const agendas: Array<{ title: string; desc: string }> = []
+
+  agendas.push({
+    title: '出门前',
+    desc: condition.includes('雨')
+      ? '带一把折叠伞，包里预留放湿伞空间。'
+      : temperature > 28
+        ? '涂好防晒，戴好遮阳帽或墨镜。'
+        : '检查外套是否带上，早晚可能需要。'
+  })
+
+  agendas.push({
+    title: '午间温度',
+    desc: high >= 26
+      ? '午后气温升至 ' + high + '°，可脱掉外套透气。'
+      : '午间温度适中，保持当前搭配即可。'
+  })
+
+  agendas.push({
+    title: '下班场景',
+    desc: low <= 15
+      ? '傍晚降温至 ' + low + '°，记得外套别忘在办公室。'
+      : '如果临时约饭，加一条配饰即可提升精致感。'
+  })
+
+  return agendas
+}
+
+/** 瀑布流卡片数据类型 */
+interface WaterfallCard {
+  id: string
+  type: 'outfit' | 'clothing'
+  title: string
+  scene: string
+  record: string
+  label: string
+  tone: string
+  size: string
+  isVideo: boolean
+}
+
+/** 将 tone 映射到 CSS 类名 */
+function toneToClass(tone: string): string {
+  const valid = ['sage', 'cream', 'denim', 'blush', 'charcoal', 'olive',
+    'blue', 'black', 'green', 'brown', 'red', 'pink', 'gray', 'white', 'oat']
+  return valid.includes(tone) ? tone : 'oat'
+}
+
+/** 从穿搭记录和有穿着记录的衣物生成瀑布流卡片 */
+function buildWaterfallCards(): WaterfallCard[][] {
+  const cards: WaterfallCard[] = []
+
+  // ① 搭配记录 → 卡片
+  const outfits = getAllOutfits()
+  outfits.forEach((o: OutfitItem) => {
+    cards.push({
+      id: o.id,
+      type: 'outfit',
+      title: o.description ? `${o.name} · ${o.description}` : o.name,
+      scene: o.scene || '搭配记录',
+      record: o.wearCount > 0 ? `已穿 ${o.wearCount} 次` : '待穿搭',
+      label: o.name.length > 6 ? o.name.slice(0, 6) + '…' : o.name,
+      tone: toneToClass(o.tone),
+      size: 'tall',
+      isVideo: false
+    })
+  })
+
+  // ② 有穿着记录的衣物 → 卡片
+  const clothes = getAllClothes().filter((c) => c.wearCount > 0)
+  clothes.forEach((c: ClothingItem) => {
+    cards.push({
+      id: c.id,
+      type: 'clothing',
+      title: `${c.name}${c.scene ? ' · ' + c.scene : ''}`,
+      scene: c.category || '穿搭记录',
+      record: `已穿 ${c.wearCount} 次`,
+      label: c.category,
+      tone: toneToClass(c.tone),
+      size: 'mid',
+      isVideo: false
+    })
+  })
+
+  // ③ 按创建时间倒序排列
+  cards.sort((a, b) => {
+    const aItem = a.type === 'outfit'
+      ? getAllOutfits().find((o) => o.id === a.id)
+      : getAllClothes().find((c) => c.id === a.id)
+    const bItem = b.type === 'outfit'
+      ? getAllOutfits().find((o) => o.id === b.id)
+      : getAllClothes().find((c) => c.id === b.id)
+    const aTime = aItem ? (aItem as any).createdAt || 0 : 0
+    const bTime = bItem ? (bItem as any).createdAt || 0 : 0
+    return bTime - aTime
+  })
+
+  // ④ 分配为双列瀑布流（交替填充）
+  const columns: WaterfallCard[][] = [[], []]
+  cards.forEach((card, index) => {
+    columns[index % 2].push(card)
+  })
+
+  return columns
+}
+
+createComponent({
+  data: {
+    activeTab: 'recommend',
+    transitionDirection: 'idle',
+    statusBarHeight: 44,
+    touchStartX: 0,
+    touchStartY: 0,
+    weatherLoading: false,
+    homeTabs: [
+      { key: 'weather', label: '今日天气' },
+      { key: 'recommend', label: '推荐' }
     ],
-    agendas: [
-      { title: '出门前', desc: '带一把折叠伞，包里预留放湿伞空间。' },
-      { title: '午间温度', desc: '室外回暖时可脱下外套，保留衬衫层次。' },
-      { title: '下班场景', desc: '如果临时约饭，直接加一条金属项链即可。' }
-    ]
+    weather: {
+      city: '上海',
+      summary: '天气加载中…',
+      temperature: '--',
+      low: '--',
+      high: '--',
+      tags: [] as string[]
+    },
+    recommendation: {
+      title: '加载中',
+      description: '正在获取天气数据…',
+      scene: '',
+      items: [] as Array<{ name: string; role: string; reason: string; fromWardrobe: boolean; clothingId?: string }>
+    },
+    waterfallColumns: [] as WaterfallCard[][],
+    reasons: [] as Array<{ title: string; desc: string }>,
+    agendas: [] as Array<{ title: string; desc: string }>,
+    wardrobeMatchCount: 0,
+    matchedOutfitIds: [] as string[]
+  },
+  attached() {
+    // 获取状态栏高度
+    if (typeof wx !== 'undefined' && typeof wx.getSystemInfoSync === 'function') {
+      const systemInfo = wx.getSystemInfoSync()
+      this.setData({
+        statusBarHeight: systemInfo.statusBarHeight || 44
+      })
+    }
+
+    // 加载真实瀑布流数据
+    this.setData({ waterfallColumns: buildWaterfallCards() })
+
+    // 加载天气数据
+    this.loadWeather()
+  },
+
+  methods: {
+    async loadWeather() {
+      this.setData({ weatherLoading: true })
+
+      try {
+        // 先尝试获取用户位置
+        const location = await getCurrentLocation()
+        const weatherData = await getWeatherInfo(
+          location?.longitude,
+          location?.latitude
+        )
+
+        // 生成基于天气的推荐数据，并与衣橱匹配
+        const rawRec = buildRecommendation(weatherData)
+        const clothes = getAllClothes()
+        const recommendation = {
+          ...rawRec,
+          items: matchWardrobe(rawRec.items, clothes)
+        }
+        const wardrobeMatchCount = recommendation.items.filter((i) => i.fromWardrobe).length
+        const reasons = buildReasons(weatherData)
+        const agendas = buildAgendas(weatherData)
+
+        this.setData({
+          weather: {
+            city: weatherData.city,
+            summary: weatherData.summary,
+            temperature: String(weatherData.temperature),
+            low: String(weatherData.low),
+            high: String(weatherData.high),
+            tags: weatherData.tags
+          },
+          recommendation,
+          reasons,
+          agendas,
+          wardrobeMatchCount,
+          weatherLoading: false
+        })
+      } catch (error) {
+        console.error('[Weather] 加载失败:', error)
+        this.setData({
+          weather: {
+            city: '上海',
+            summary: '天气数据加载失败，请检查网络',
+            temperature: '--',
+            low: '--',
+            high: '--',
+            tags: []
+          },
+          weatherLoading: false
+        })
+      }
+    },
+    switchHomeTab(event: HomeTabEvent) {
+      this.setHomeTab(event.currentTarget.dataset.tab)
+    },
+    setHomeTab(tab: string) {
+      if (tab === this.data.activeTab) return
+
+      const activeIndex = homeTabKeys.indexOf(this.data.activeTab)
+      const nextIndex = homeTabKeys.indexOf(tab)
+      if (nextIndex < 0) return
+
+      this.setData({
+        activeTab: tab,
+        transitionDirection: nextIndex > activeIndex ? 'forward' : 'backward'
+      })
+    },
+    handleTabTouchStart(event: HomeTouchEvent) {
+      const touchPoint = event.touches && event.touches[0]
+      if (!touchPoint) return
+
+      this.setData({
+        touchStartX: touchPoint.clientX,
+        touchStartY: touchPoint.clientY
+      })
+    },
+    handleTabTouchEnd(event: HomeTouchEvent) {
+      const touchPoint = event.changedTouches && event.changedTouches[0]
+      if (!touchPoint) return
+
+      const deltaX = touchPoint.clientX - this.data.touchStartX
+      const deltaY = touchPoint.clientY - this.data.touchStartY
+      const isHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4
+      if (!isHorizontalSwipe) return
+
+      const activeIndex = homeTabKeys.indexOf(this.data.activeTab)
+      const nextIndex = deltaX < 0 ? activeIndex + 1 : activeIndex - 1
+      const nextTab = homeTabKeys[nextIndex]
+      if (nextTab) {
+        this.setHomeTab(nextTab)
+      }
+    },
+
+    /** 点击衣橱匹配单品 → 跳转详情 */
+    goClothingDetail(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      if (id) {
+        wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${id}` })
+      }
+    },
+
+    /** 点击瀑布流卡片 → 跳转搭配/衣物详情 */
+    goWaterfallCard(e: { currentTarget: { dataset: { id: string; type: string } } }) {
+      const { id, type } = e.currentTarget.dataset
+      if (type === 'outfit') {
+        wx.navigateTo({ url: `/pages/outfitDetailPage/index?id=${id}` })
+      } else if (type === 'clothing') {
+        wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${id}` })
+      }
+    }
   }
 })
 </script>
@@ -105,9 +552,460 @@ createComponent({
 <style lang="less">
 .page {
   min-height: 100vh;
-  padding: 32rpx 24rpx 48rpx;
-  background: linear-gradient(180deg, #f6efe8 0%, #efe5d9 100%);
+  padding: 0 18rpx 170rpx;
+  background: #f6f6f6;
   box-sizing: border-box;
+}
+
+.custom-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 -18rpx 18rpx;
+  padding-right: 24rpx;
+  padding-left: 24rpx;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 92rpx;
+}
+
+.nav-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.nav-title {
+  display: block;
+  color: #222222;
+  font-size: 38rpx;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.nav-weather {
+  display: flex;
+  align-items: center;
+  margin-top: 10rpx;
+  color: #6d6d6d;
+  font-size: 22rpx;
+  line-height: 1;
+}
+
+.nav-weather-dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 8rpx;
+  border-radius: 50%;
+  background: #ff2442;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.nav-icon {
+  position: relative;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+  box-sizing: border-box;
+}
+
+.nav-icon--search::before {
+  content: '';
+  position: absolute;
+  left: 13rpx;
+  top: 12rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border: 4rpx solid #333333;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.nav-icon--search::after {
+  content: '';
+  position: absolute;
+  right: 12rpx;
+  bottom: 13rpx;
+  width: 16rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: #333333;
+  transform: rotate(45deg);
+}
+
+.nav-icon--calendar::before {
+  content: '';
+  position: absolute;
+  left: 12rpx;
+  top: 14rpx;
+  width: 28rpx;
+  height: 26rpx;
+  border: 4rpx solid #333333;
+  border-radius: 6rpx;
+  box-sizing: border-box;
+}
+
+.nav-icon--calendar::after {
+  content: '';
+  position: absolute;
+  left: 17rpx;
+  top: 10rpx;
+  width: 18rpx;
+  height: 10rpx;
+  border-right: 4rpx solid #333333;
+  border-left: 4rpx solid #333333;
+  box-sizing: border-box;
+}
+
+.home-tabs {
+  display: flex;
+  align-items: center;
+  gap: 48rpx;
+  height: 72rpx;
+}
+
+.home-tab {
+  position: relative;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #8a8a8a;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.home-tab--active {
+  color: #222222;
+  font-weight: 700;
+  transform: translateY(-2rpx);
+}
+
+.home-tab::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8rpx;
+  width: 48rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #ff2442;
+  opacity: 0;
+  transform: translateX(-50%) scaleX(0.4);
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-tab--active::after {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+.panel-motion {
+  animation-duration: 260ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.home-page--forward .panel-motion {
+  animation-name: panelInFromRight;
+}
+
+.home-page--backward .panel-motion {
+  animation-name: panelInFromLeft;
+}
+
+@keyframes panelInFromRight {
+  from {
+    opacity: 0.28;
+    transform: translateX(36rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panelInFromLeft {
+  from {
+    opacity: 0.28;
+    transform: translateX(-36rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.feed-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.city-pill {
+  display: flex;
+  align-items: center;
+  height: 54rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #363636;
+  font-size: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.city-dot {
+  width: 12rpx;
+  height: 12rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+  background: #ff2442;
+}
+
+.search-icon {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  border: 4rpx solid #343434;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.search-icon::after {
+  content: '';
+  position: absolute;
+  right: -12rpx;
+  bottom: -8rpx;
+  width: 20rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: #343434;
+  transform: rotate(45deg);
+}
+
+.waterfall {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+}
+
+.waterfall-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.waterfall-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #555555;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  font-size: 24rpx;
+  color: #999999;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.masonry-card {
+  margin-bottom: 16rpx;
+  overflow: hidden;
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-cover {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 230rpx;
+  padding: 22rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.card-cover--small {
+  min-height: 210rpx;
+}
+
+.card-cover--mid {
+  min-height: 280rpx;
+}
+
+.card-cover--wide {
+  min-height: 360rpx;
+}
+
+.card-cover--tall {
+  min-height: 430rpx;
+}
+
+.card-cover--sage {
+  background: linear-gradient(150deg, #d7e6dc 0%, #7f9d8d 58%, #34473d 100%);
+}
+
+.card-cover--cream {
+  background: linear-gradient(150deg, #fff2d6 0%, #e0b98e 62%, #80634c 100%);
+}
+
+.card-cover--denim {
+  background: linear-gradient(150deg, #d8eafa 0%, #789fc4 58%, #263c57 100%);
+}
+
+.card-cover--blush {
+  background: linear-gradient(150deg, #ffe5ea 0%, #d997a8 54%, #7f4e5d 100%);
+}
+
+.card-cover--charcoal {
+  background: linear-gradient(150deg, #eee7e0 0%, #79716d 52%, #222222 100%);
+}
+
+.card-cover--olive {
+  background: linear-gradient(150deg, #edf0d2 0%, #a4b477 58%, #4f6136 100%);
+}
+
+.card-cover--blue {
+  background: linear-gradient(150deg, #d6e4f5 0%, #7a9cc0 56%, #2a4365 100%);
+}
+
+.card-cover--black {
+  background: linear-gradient(150deg, #e0e0e0 0%, #6b6b6b 52%, #1a1a1a 100%);
+}
+
+.card-cover--green {
+  background: linear-gradient(150deg, #e2f0da 0%, #85a87a 54%, #3a562e 100%);
+}
+
+.card-cover--brown {
+  background: linear-gradient(150deg, #f5eadc 0%, #b89878 54%, #5c4033 100%);
+}
+
+.card-cover--red {
+  background: linear-gradient(150deg, #ffe8e4 0%, #d4746a 54%, #7a2e28 100%);
+}
+
+.card-cover--pink {
+  background: linear-gradient(150deg, #fce4ed 0%, #d4879d 56%, #7a3b52 100%);
+}
+
+.card-cover--gray {
+  background: linear-gradient(150deg, #ececec 0%, #9e9e9e 52%, #4a4a4a 100%);
+}
+
+.card-cover--white {
+  background: linear-gradient(150deg, #f9f9f7 0%, #dedcd6 50%, #aaa69a 100%);
+}
+
+.card-cover--oat {
+  background: linear-gradient(150deg, #f9f5ec 0%, #d9cdb0 54%, #a8936e 100%);
+}
+
+.cover-shine {
+  position: absolute;
+  top: -60rpx;
+  right: -70rpx;
+  width: 190rpx;
+  height: 190rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.cover-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  max-width: 100%;
+  padding: 10rpx 14rpx;
+  border-radius: 8rpx;
+  background: rgba(255, 255, 255, 0.86);
+  color: #2d2d2d;
+  font-size: 24rpx;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.video-mark {
+  position: absolute;
+  right: 18rpx;
+  top: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.36);
+  color: #ffffff;
+  font-size: 22rpx;
+}
+
+.card-body {
+  padding: 16rpx 18rpx 18rpx;
+}
+
+.card-title {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #282828;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  color: #777777;
+  font-size: 22rpx;
+}
+
+.record-scene {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  max-width: 128rpx;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.record-count {
+  flex-shrink: 0;
+  color: #555555;
+  font-weight: 600;
 }
 
 .hero-card,
@@ -247,6 +1145,39 @@ createComponent({
 .formula-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+.formula-badge--matched {
+  background: #ff2442;
+}
+
+.formula-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.wardrobe-badge {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #ffe8ec;
+  color: #ff2442;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.wardrobe-hint {
+  margin-top: 16rpx;
+  padding: 14rpx 20rpx;
+  border-radius: 12rpx;
+  background: #fef0f3;
+}
+
+.wardrobe-hint-text {
+  font-size: 22rpx;
+  color: #ff2442;
+  font-weight: 600;
 }
 
 .formula-badge {

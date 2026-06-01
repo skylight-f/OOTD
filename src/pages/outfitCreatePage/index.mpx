@@ -1,0 +1,17 @@
+<template>
+  <OutfitCreatePage />
+</template>
+
+<script lang="ts">
+import { createPage } from '@mpxjs/core'
+createPage({})
+</script>
+
+<script type="application/json">
+  {
+    "navigationBarTitleText": "新建搭配",
+    "usingComponents": {
+      "OutfitCreatePage": "./component/OutfitCreatePage"
+    }
+  }
+</script>

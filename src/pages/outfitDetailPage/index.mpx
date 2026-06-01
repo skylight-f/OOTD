@@ -1,0 +1,24 @@
+<template>
+  <OutfitDetailPage outfitId="{{outfitId}}" />
+</template>
+
+<script lang="ts">
+import { createPage } from '@mpxjs/core'
+createPage({
+  data: {
+    outfitId: ''
+  },
+  onLoad(options: { id?: string }) {
+    this.setData({ outfitId: options.id || '' })
+  }
+})
+</script>
+
+<script type="application/json">
+  {
+    "navigationBarTitleText": "搭配详情",
+    "usingComponents": {
+      "OutfitDetailPage": "./component/OutfitDetailPage"
+    }
+  }
+</script>

@@ -1,0 +1,441 @@
+<template>
+  <view class="page closet-dashboard-page">
+    <view class="summary-card">
+      <text class="eyebrow">衣橱数据看板</text>
+      <text class="summary-title">本季衣橱利用率 {{usageRate}}%</text>
+      <text class="summary-desc">基于你的单品、常穿频率和场景覆盖，整理出更容易复穿的搭配方向。</text>
+      <view class="summary-grid">
+        <view wx:for="{{overviewStats}}" wx:key="label" class="summary-stat">
+          <text class="summary-value">{{item.value}}</text>
+          <text class="summary-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-head">
+        <text class="section-title">分类占比</text>
+        <text class="section-subtitle">按当前录入单品</text>
+      </view>
+      <view class="bar-list">
+        <view wx:for="{{categoryBars}}" wx:key="label" class="bar-item">
+          <view class="bar-row">
+            <text class="bar-label">{{item.label}}</text>
+            <text class="bar-value">{{item.value}} 件</text>
+          </view>
+          <view class="bar-track">
+            <view class="bar-fill bar-fill--{{item.tone}}" style="width: {{item.rate}}%;"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-head">
+        <text class="section-title">场景覆盖</text>
+        <text class="section-subtitle">最近 30 天</text>
+      </view>
+      <view class="scene-grid">
+        <view wx:for="{{sceneStats}}" wx:key="label" class="scene-card">
+          <text class="scene-value">{{item.value}}</text>
+          <text class="scene-label">{{item.label}}</text>
+          <text class="scene-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">复穿建议</text>
+      <view class="insight-list">
+        <view wx:for="{{insights}}" wx:key="title" class="insight-item">
+          <text class="insight-title">{{item.title}}</text>
+          <text class="insight-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+import { getAllClothes, getClothingStats, type ClothingItem } from '@/utils/storage'
+
+/** 计算分类占比 */
+function buildCategoryBars(clothes: ClothingItem[]) {
+  const cats: Record<string, ClothingItem[]> = {}
+  clothes.forEach((c) => {
+    const key = c.category
+    if (!cats[key]) cats[key] = []
+    cats[key].push(c)
+  })
+
+  const tones = ['green', 'blue', 'gold', 'rose', 'dark']
+  const max = Math.max(...Object.values(cats).map((v) => v.length), 1)
+  return Object.entries(cats)
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([label, items], i) => ({
+      label,
+      value: items.length,
+      rate: Math.round((items.length / max) * 100),
+      tone: tones[i % tones.length]
+    }))
+}
+
+/** 计算场景覆盖 */
+function buildSceneStats(clothes: ClothingItem[]) {
+  const scenes: Record<string, number> = {}
+  clothes.forEach((c) => {
+    c.scene.split(' / ').forEach((s) => {
+      const t = s.trim()
+      if (t) scenes[t] = (scenes[t] || 0) + 1
+    })
+  })
+
+  const total = clothes.length || 1
+  const descByScene: Record<string, string> = {
+    '通勤': '覆盖最完整', '周末': '偏休闲基础款',
+    '约会': '缺少亮色配饰', '运动': '可补轻便外套',
+    '休闲': '基础款充足', '旅行': '功能性单品较少',
+    '正式': '可加配饰', '居家': '舒适单品为主'
+  }
+
+  return Object.entries(scenes)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 4)
+    .map(([label, count]) => ({
+      label,
+      value: Math.round((count / total) * 100) + '%',
+      desc: descByScene[label] || '搭配灵活'
+    }))
+}
+
+/** 生成复穿建议 */
+function buildInsights(clothes: ClothingItem[]): Array<{ title: string; desc: string }> {
+  const insights: Array<{ title: string; desc: string }> = []
+  const total = clothes.length
+
+  if (total === 0) {
+    return [{ title: '衣橱还是空的', desc: '添加几件单品后，这里会自动出现搭配建议。' }]
+  }
+
+  // 高频穿着（>3次）
+  const highWear = clothes.filter((c) => c.wearCount >= 3)
+  if (highWear.length > 0) {
+    const names = highWear.slice(0, 3).map((c) => c.name).join('、')
+    insights.push({
+      title: `${names}复穿率高`,
+      desc: `可以围绕这 ${highWear.length} 件高频单品继续生成更多搭配公式。`
+    })
+  }
+
+  // 检查类别缺失
+  const categories = new Set(clothes.map((c) => c.category))
+  if (!categories.has('配饰')) {
+    insights.push({
+      title: '缺少配饰品类',
+      desc: '添加项链、丝巾或腰带会明显提高搭配的丰富度和精致感。'
+    })
+  }
+
+  // 检查低利用率
+  const lowWear = clothes.filter((c) => c.wearCount === 0)
+  if (lowWear.length > 0) {
+    insights.push({
+      title: `${lowWear.length} 件单品尚未穿着`,
+      desc: '检查是否有不适合当前季节的衣物，考虑搭配进本周穿搭。'
+    })
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      title: '衣橱搭配很均衡',
+      desc: '品类齐全，穿着频率合理，继续保持当前的搭配习惯。'
+    })
+  }
+
+  return insights.slice(0, 3)
+}
+
+/** 计算利用率 */
+function calcUsageRate(clothes: ClothingItem[]): number {
+  if (clothes.length === 0) return 0
+  const worn = clothes.filter((c) => c.wearCount > 0).length
+  return Math.round((worn / clothes.length) * 100)
+}
+
+createComponent({
+  data: {
+    overviewStats: [
+      { label: '总单品', value: '0' },
+      { label: '本季可穿', value: '0' },
+      { label: '高频单品', value: '0' },
+      { label: '待整理', value: '0' }
+    ],
+    usageRate: 0,
+    categoryBars: [] as ReturnType<typeof buildCategoryBars>,
+    sceneStats: [] as ReturnType<typeof buildSceneStats>,
+    insights: [] as ReturnType<typeof buildInsights>
+  },
+
+  attached() {
+    this.refreshData()
+  },
+
+  methods: {
+    refreshData() {
+      const clothes = getAllClothes()
+      const stats = getClothingStats()
+      const highWear = clothes.filter((c) => c.wearCount >= 3).length
+      const zeroWear = clothes.filter((c) => c.wearCount === 0).length
+      const usageRate = calcUsageRate(clothes)
+
+      this.setData({
+        overviewStats: [
+          { label: '总单品', value: String(stats.total) },
+          { label: '本季可穿', value: String(stats.seasonCount) },
+          { label: '高频单品', value: String(highWear) },
+          { label: '待整理', value: String(zeroWear) }
+        ],
+        usageRate,
+        categoryBars: buildCategoryBars(clothes),
+        sceneStats: buildSceneStats(clothes),
+        insights: buildInsights(clothes)
+      })
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 56rpx;
+  background: #f6f6f6;
+  box-sizing: border-box;
+}
+
+.summary-card,
+.section-card {
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+}
+
+.summary-card {
+  padding: 34rpx 30rpx;
+}
+
+.eyebrow {
+  color: #ff2442;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.summary-title {
+  display: block;
+  margin-top: 14rpx;
+  color: #222222;
+  font-size: 42rpx;
+  line-height: 1.28;
+  font-weight: 700;
+}
+
+.summary-desc {
+  display: block;
+  margin-top: 14rpx;
+  color: #6b6b6b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 26rpx;
+}
+
+.summary-stat {
+  width: 48.5%;
+  margin-bottom: 14rpx;
+  padding: 22rpx;
+  border-radius: 8rpx;
+  background: #f7f3ef;
+  box-sizing: border-box;
+}
+
+.summary-value {
+  display: block;
+  color: #1f3c34;
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.summary-label {
+  display: block;
+  margin-top: 8rpx;
+  color: #777777;
+  font-size: 22rpx;
+}
+
+.section-card {
+  margin-top: 18rpx;
+  padding: 28rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.section-title {
+  color: #222222;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  color: #8a8a8a;
+  font-size: 22rpx;
+}
+
+.bar-list {
+  margin-top: 24rpx;
+}
+
+.bar-item {
+  margin-bottom: 22rpx;
+}
+
+.bar-item:last-child {
+  margin-bottom: 0;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.bar-label,
+.bar-value {
+  color: #555555;
+  font-size: 24rpx;
+}
+
+.bar-value {
+  color: #777777;
+}
+
+.bar-track {
+  overflow: hidden;
+  height: 16rpx;
+  border-radius: 999rpx;
+  background: #eeeeee;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+}
+
+.bar-fill--green {
+  background: #6d9678;
+}
+
+.bar-fill--blue {
+  background: #6b9dcc;
+}
+
+.bar-fill--gold {
+  background: #bd9051;
+}
+
+.bar-fill--rose {
+  background: #df7d91;
+}
+
+.bar-fill--dark {
+  background: #333333;
+}
+
+.scene-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 22rpx;
+}
+
+.scene-card {
+  width: 48.5%;
+  margin-bottom: 14rpx;
+  padding: 22rpx;
+  border-radius: 8rpx;
+  background: #f7f7f7;
+  box-sizing: border-box;
+}
+
+.scene-value {
+  display: block;
+  color: #ff2442;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.scene-label {
+  display: block;
+  margin-top: 8rpx;
+  color: #222222;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.scene-desc {
+  display: block;
+  margin-top: 8rpx;
+  color: #777777;
+  font-size: 22rpx;
+}
+
+.insight-list {
+  margin-top: 22rpx;
+}
+
+.insight-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #eeeeee;
+}
+
+.insight-item:first-child {
+  padding-top: 0;
+}
+
+.insight-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.insight-title {
+  display: block;
+  color: #222222;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.insight-desc {
+  display: block;
+  margin-top: 10rpx;
+  color: #666666;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

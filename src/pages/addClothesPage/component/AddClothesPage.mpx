@@ -1,0 +1,726 @@
+<template>
+  <view class="page add-clothes-page">
+    <!-- 顶部相机区域 -->
+    <view class="scan-card" bindtap="onTapCamera">
+      <view class="camera-mark">
+        <text class="camera-plus">+</text>
+      </view>
+      <text class="scan-title">添加衣服</text>
+      <text class="scan-desc">拍照或从相册选择衣服，整理进你的数字衣橱。</text>
+    </view>
+
+    <!-- 入口卡片（非表单模式时显示） -->
+    <view class="entry-grid" wx:if="{{!showForm}}">
+      <view
+        wx:for="{{entries}}"
+        wx:key="title"
+        class="entry-card"
+        bindtap="onTapEntry"
+        data-index="{{index}}"
+      >
+        <text class="entry-icon">{{item.icon}}</text>
+        <text class="entry-title">{{item.title}}</text>
+        <text class="entry-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <!-- 表单编辑模式 -->
+    <view class="form-section" wx:if="{{showForm}}">
+      <!-- 图片预览 -->
+      <view class="form-card">
+        <text class="section-title">衣物预览</text>
+        <view class="preview-wrap">
+          <image
+            wx:if="{{selectedImage}}"
+            class="preview-image"
+            src="{{selectedImage}}"
+            mode="aspectFit"
+          />
+          <view wx:else class="preview-placeholder">
+            <text class="preview-placeholder-text">未选择图片</text>
+          </view>
+        </view>
+        <view class="preview-actions">
+          <view class="preview-btn" bindtap="onTapCamera">
+            <text class="preview-btn-text">重新拍照</text>
+          </view>
+          <view class="preview-btn" bindtap="onTapAlbum">
+            <text class="preview-btn-text">从相册选择</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 基本信息输入 -->
+      <view class="form-card">
+        <text class="section-title">基本信息</text>
+
+        <view class="form-item">
+          <text class="form-label">名称</text>
+          <input
+            class="form-input"
+            placeholder="如：燕麦针织开衫"
+            value="{{formData.name}}"
+            bindinput="onInputName"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">颜色</text>
+          <input
+            class="form-input"
+            placeholder="如：燕麦白"
+            value="{{formData.color}}"
+            bindinput="onInputColor"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">材质</text>
+          <input
+            class="form-input"
+            placeholder="如：羊毛混纺"
+            value="{{formData.material}}"
+            bindinput="onInputMaterial"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">品牌</text>
+          <input
+            class="form-input"
+            placeholder="可选"
+            value="{{formData.brand}}"
+            bindinput="onInputBrand"
+          />
+        </view>
+      </view>
+
+      <!-- 分类选择 -->
+      <view class="form-card">
+        <text class="section-title">分类信息</text>
+
+        <view class="form-item">
+          <text class="form-label">类别</text>
+          <picker
+            class="form-picker"
+            mode="selector"
+            range="{{categoryOptions}}"
+            value="{{categoryIndex}}"
+            bindchange="onCategoryChange"
+          >
+            <view class="picker-display">
+              <text class="picker-text">{{categoryOptions[categoryIndex]}}</text>
+              <text class="picker-arrow">▸</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">季节</text>
+          <picker
+            class="form-picker"
+            mode="selector"
+            range="{{seasonOptions}}"
+            value="{{seasonIndex}}"
+            bindchange="onSeasonChange"
+          >
+            <view class="picker-display">
+              <text class="picker-text">{{seasonOptions[seasonIndex]}}</text>
+              <text class="picker-arrow">▸</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">适合场景</text>
+          <view class="scene-tags">
+            <view
+              wx:for="{{sceneOptions}}"
+              wx:key="*this"
+              class="scene-tag {{selectedScenes.indexOf(item) > -1 ? 'scene-tag--active' : ''}}"
+              bindtap="onToggleScene"
+              data-scene="{{item}}"
+            >
+              <text class="scene-tag-text">{{item}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="form-actions">
+        <view class="btn-cancel" bindtap="onCancel">
+          <text class="btn-cancel-text">取消</text>
+        </view>
+        <view class="btn-save" bindtap="onSave">
+          <text class="btn-save-text">保存</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 录入建议（非表单模式时显示） -->
+    <view class="tips-card" wx:if="{{!showForm}}">
+      <text class="section-title">录入建议</text>
+      <view class="tips-list">
+        <view wx:for="{{tips}}" wx:key="*this" class="tip-item">
+          <text class="tip-dot"></text>
+          <text class="tip-text">{{item}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+import { addClothing, saveImageToTemp, inferTone } from '@/utils/storage'
+import type { ClothingInput } from '@/utils/storage'
+
+createComponent({
+  data: {
+    // 入口卡片数据
+    entries: [
+      { icon: '拍', title: '拍照录入', desc: '适合刚买的新衣服', action: 'camera' },
+      { icon: '册', title: '相册选择', desc: '批量整理历史照片', action: 'album' },
+      { icon: '码', title: '吊牌信息', desc: '记录尺码和材质', action: 'tag' },
+      { icon: '分', title: '快速分类', desc: '按季节和场景归档', action: 'classify' }
+    ],
+    tips: ['尽量使用自然光拍摄', '保留完整轮廓，减少背景干扰', '录入颜色、材质和适合场景，推荐会更准'],
+
+    // 表单模式控制
+    showForm: false,
+    selectedImage: '',
+
+    // 表单数据
+    formData: {
+      name: '',
+      color: '',
+      material: '',
+      brand: ''
+    },
+
+    // Picker 选项
+    categoryOptions: ['上装', '下装', '外套', '鞋履', '配饰', '包袋'],
+    categoryIndex: 0,
+    seasonOptions: ['春夏', '秋冬', '四季'],
+    seasonIndex: 0,
+    sceneOptions: ['通勤', '周末', '约会', '运动', '居家', '旅行', '正式'],
+    selectedScenes: [] as string[]
+  },
+
+  methods: {
+    /** 点击相机区域或"拍照录入"卡片 */
+    onTapCamera() {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['camera'],
+        success: (res) => {
+          if (res.tempFiles && res.tempFiles.length > 0) {
+            this.handleImageSelected(res.tempFiles[0].tempFilePath)
+          }
+        },
+        fail: () => {
+          // 用户取消，不做处理
+        }
+      })
+    },
+
+    /** 点击"相册选择"卡片 */
+    onTapAlbum() {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album'],
+        success: (res) => {
+          if (res.tempFiles && res.tempFiles.length > 0) {
+            this.handleImageSelected(res.tempFiles[0].tempFilePath)
+          }
+        },
+        fail: () => {
+          // 用户取消，不做处理
+        }
+      })
+    },
+
+    /** 统一处理入口卡片点击 */
+    onTapEntry(e: any) {
+      const index = e.currentTarget.dataset.index
+      const entry = this.entries[index]
+
+      switch (entry.action) {
+        case 'camera':
+          this.onTapCamera()
+          break
+        case 'album':
+          this.onTapAlbum()
+          break
+        case 'tag':
+        case 'classify':
+          wx.showToast({ title: '功能开发中', icon: 'none', duration: 1500 })
+          break
+        default:
+          break
+      }
+    },
+
+    /** 图片选择后进入表单模式 */
+    handleImageSelected(tempFilePath: string) {
+      this.setData({
+        showForm: true,
+        selectedImage: tempFilePath
+      })
+    },
+
+    /** 表单输入绑定 */
+    onInputName(e: any) {
+      this.setData({ 'formData.name': e.detail.value })
+    },
+
+    onInputColor(e: any) {
+      this.setData({ 'formData.color': e.detail.value })
+    },
+
+    onInputMaterial(e: any) {
+      this.setData({ 'formData.material': e.detail.value })
+    },
+
+    onInputBrand(e: any) {
+      this.setData({ 'formData.brand': e.detail.value })
+    },
+
+    /** 类别选择器变化 */
+    onCategoryChange(e: any) {
+      this.setData({ categoryIndex: Number(e.detail.value) })
+    },
+
+    /** 季节选择器变化 */
+    onSeasonChange(e: any) {
+      this.setData({ seasonIndex: Number(e.detail.value) })
+    },
+
+    /** 场景多选切换 */
+    onToggleScene(e: any) {
+      const scene = e.currentTarget.dataset.scene
+      const current: string[] = [...this.selectedScenes]
+      const idx = current.indexOf(scene)
+
+      if (idx > -1) {
+        current.splice(idx, 1)
+      } else {
+        current.push(scene)
+      }
+
+      this.setData({ selectedScenes: current })
+    },
+
+    /** 取消编辑，重置回初始状态 */
+    onCancel() {
+      this.setData({
+        showForm: false,
+        selectedImage: '',
+        formData: {
+          name: '',
+          color: '',
+          material: '',
+          brand: ''
+        },
+        categoryIndex: 0,
+        seasonIndex: 0,
+        selectedScenes: []
+      })
+    },
+
+    /** 保存衣物 */
+    onSave() {
+      const { formData, categoryIndex, categoryOptions, seasonIndex, seasonOptions, selectedScenes, selectedImage } = this.data
+
+      // 验证必填项
+      if (!formData.name.trim()) {
+        wx.showToast({ title: '请输入衣物名称', icon: 'none', duration: 1500 })
+        return
+      }
+
+      wx.showLoading({ title: '保存中...' })
+
+      const category = categoryOptions[categoryIndex]
+      const season = seasonOptions[seasonIndex]
+      const scene = selectedScenes.length > 0 ? selectedScenes.join(' / ') : '日常'
+      const tone = inferTone(formData.color)
+
+      // 保存图片到持久目录，然后保存衣物数据
+      const doSaveClothing = (imagePath: string) => {
+        try {
+          const input: ClothingInput = {
+            name: formData.name.trim(),
+            category: category,
+            color: formData.color.trim() || '未填写',
+            material: formData.material.trim() || '未填写',
+            scene: scene,
+            season: season,
+            imagePath: imagePath,
+            tone: tone,
+            brand: formData.brand.trim()
+          }
+
+          addClothing(input)
+
+          wx.hideLoading()
+          wx.showToast({ title: '添加成功', icon: 'success', duration: 1500 })
+
+          // 重置表单
+          setTimeout(() => {
+            this.onCancel()
+          }, 1500)
+        } catch (err) {
+          wx.hideLoading()
+          wx.showToast({ title: '保存失败，请重试', icon: 'none', duration: 2000 })
+        }
+      }
+
+      if (selectedImage) {
+        saveImageToTemp(selectedImage)
+          .then((savedPath) => {
+            doSaveClothing(savedPath)
+          })
+          .catch(() => {
+            // 图片保存失败时，使用临时路径继续
+            doSaveClothing(selectedImage)
+          })
+      } else {
+        doSaveClothing('')
+      }
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 170rpx;
+  background: #f6f6f6;
+  box-sizing: border-box;
+}
+
+.scan-card,
+.entry-card,
+.tips-card,
+.form-card {
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+}
+
+.scan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 52rpx 34rpx;
+  border-radius: 8rpx;
+}
+
+.camera-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  background: #ff2442;
+  box-shadow: 0 16rpx 34rpx rgba(255, 36, 66, 0.28);
+}
+
+.camera-plus {
+  color: #ffffff;
+  font-size: 76rpx;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.scan-title {
+  display: block;
+  margin-top: 30rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.scan-desc {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #777777;
+  text-align: center;
+}
+
+.entry-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 18rpx;
+}
+
+.entry-card {
+  width: 48.5%;
+  margin-bottom: 18rpx;
+  padding: 26rpx 22rpx;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+}
+
+.entry-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #ffe8ec;
+  color: #ff2442;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.entry-title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #2b2b2b;
+}
+
+.entry-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #818181;
+}
+
+.tips-card {
+  margin-top: 2rpx;
+  padding: 28rpx;
+  border-radius: 8rpx;
+}
+
+.section-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.tips-list {
+  margin-top: 18rpx;
+}
+
+.tip-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.tip-item:last-child {
+  margin-bottom: 0;
+}
+
+.tip-dot {
+  flex-shrink: 0;
+  width: 10rpx;
+  height: 10rpx;
+  margin-top: 13rpx;
+  margin-right: 14rpx;
+  border-radius: 50%;
+  background: #ff2442;
+}
+
+.tip-text {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.55;
+  color: #666666;
+}
+
+/* ---- 表单区域样式 ---- */
+
+.form-section {
+  margin-top: 18rpx;
+}
+
+.form-card {
+  padding: 28rpx;
+  border-radius: 8rpx;
+  margin-top: 18rpx;
+}
+
+/* 图片预览 */
+.preview-wrap {
+  margin-top: 20rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.preview-image {
+  width: 400rpx;
+  height: 400rpx;
+  border-radius: 8rpx;
+  background: #f5f5f5;
+}
+
+.preview-placeholder {
+  width: 400rpx;
+  height: 400rpx;
+  border-radius: 8rpx;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-placeholder-text {
+  font-size: 26rpx;
+  color: #bbbbbb;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  margin-top: 20rpx;
+}
+
+.preview-btn {
+  padding: 12rpx 32rpx;
+  border-radius: 999rpx;
+  background: #ffe8ec;
+}
+
+.preview-btn-text {
+  font-size: 24rpx;
+  color: #ff2442;
+  font-weight: 600;
+}
+
+/* 表单项 */
+.form-item {
+  margin-top: 24rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 12rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 24rpx;
+  border-radius: 8rpx;
+  background: #f8f8f8;
+  font-size: 26rpx;
+  color: #333333;
+  box-sizing: border-box;
+}
+
+.form-picker {
+  width: 100%;
+}
+
+.picker-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80rpx;
+  padding: 0 24rpx;
+  border-radius: 8rpx;
+  background: #f8f8f8;
+}
+
+.picker-text {
+  font-size: 26rpx;
+  color: #333333;
+}
+
+.picker-arrow {
+  font-size: 28rpx;
+  color: #cccccc;
+}
+
+/* 场景多选标签 */
+.scene-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.scene-tag {
+  padding: 14rpx 28rpx;
+  border-radius: 999rpx;
+  background: #f2f2f2;
+}
+
+.scene-tag--active {
+  background: #ff2442;
+}
+
+.scene-tag-text {
+  font-size: 24rpx;
+  color: #666666;
+}
+
+.scene-tag--active .scene-tag-text {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* 操作按钮 */
+.form-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+  padding: 0 28rpx;
+}
+
+.btn-cancel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 8rpx;
+  background: #f2f2f2;
+}
+
+.btn-cancel-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #666666;
+}
+
+.btn-save {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 8rpx;
+  background: #ff2442;
+  box-shadow: 0 12rpx 28rpx rgba(255, 36, 66, 0.28);
+}
+
+.btn-save-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

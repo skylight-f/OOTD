@@ -1,8 +1,13 @@
 <template>
   <view class="page closet-page">
-    <view class="hero-card">
-      <text class="eyebrow">数字衣橱</text>
-      <text class="hero-title">一眼找到能穿、好搭、适合今天的衣服</text>
+    <view class="hero-card" bindtap="openDashboard" hover-class="hero-card--pressed">
+      <view class="hero-head">
+        <view>
+          <text class="eyebrow">数字衣橱</text>
+          <text class="hero-title">一眼找到能穿、好搭、适合今天的衣服</text>
+        </view>
+        <text class="hero-link">看板</text>
+      </view>
       <view class="stats-row">
         <view wx:for="{{stats}}" wx:key="label" class="stat-card">
           <text class="stat-value">{{item.value}}</text>
@@ -12,7 +17,13 @@
     </view>
 
     <view class="action-row">
-      <view wx:for="{{actions}}" wx:key="title" class="action-card">
+      <view
+        wx:for="{{actions}}"
+        wx:key="title"
+        class="action-card"
+        bindtap="onTapAction"
+        data-index="{{index}}"
+      >
         <text class="action-title">{{item.title}}</text>
         <text class="action-desc">{{item.desc}}</text>
       </view>
@@ -21,20 +32,33 @@
     <view class="section-card">
       <text class="section-title">筛选条件</text>
       <view class="chip-group">
-        <text wx:for="{{filters}}" wx:key="*this" class="chip">{{item}}</text>
+        <text
+          wx:for="{{filters}}"
+          wx:key="*this"
+          class="chip {{activeFilter === item ? 'chip--active' : ''}}"
+          bindtap="onTapFilter"
+          data-filter="{{item}}"
+        >{{item}}</text>
       </view>
     </view>
 
-    <view class="section-card wardrobe-card">
+    <!-- 有衣物时展示列表 -->
+    <view class="section-card wardrobe-card" wx:if="{{items.length > 0}}">
       <view class="section-head">
         <text class="section-title">最近常穿</text>
         <text class="section-subtitle">{{items.length}} 件单品</text>
       </view>
 
       <view class="wardrobe-grid">
-        <view wx:for="{{items}}" wx:key="name" class="wardrobe-item">
+        <view wx:for="{{items}}" wx:key="id" class="wardrobe-item" bindtap="onTapItem" data-id="{{item.id}}">
           <view class="item-cover item-cover--{{item.tone}}">
-            <text class="item-icon">{{item.icon}}</text>
+            <image
+              wx:if="{{item.imagePath}}"
+              class="item-image"
+              src="{{item.imagePath}}"
+              mode="aspectFill"
+            />
+            <text wx:else class="item-icon">{{item.icon}}</text>
           </view>
           <text class="item-name">{{item.name}}</text>
           <text class="item-meta">{{item.color}} · {{item.material}}</text>
@@ -42,32 +66,168 @@
         </view>
       </view>
     </view>
+
+    <!-- 空状态 -->
+    <view class="section-card empty-card" wx:if="{{items.length === 0}}">
+      <view class="empty-icon-wrap">
+        <text class="empty-icon">+</text>
+      </view>
+      <text class="empty-title">还没有衣物</text>
+      <text class="empty-desc">去添加第一件吧，开始整理你的数字衣橱。</text>
+      <view class="empty-btn" bindtap="goAddClothes">
+        <text class="empty-btn-text">去添加</text>
+      </view>
+    </view>
   </view>
 </template>
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
+import { getAllClothes, getClothingStats, inferTone, categoryToIcon } from '@/utils/storage'
+import type { ClothingItem, ClothingStats } from '@/utils/storage'
+
+
+/** 将 ClothingItem 转换为列表展示数据 */
+function toDisplayItem(item: ClothingItem): {
+  id: string
+  name: string
+  color: string
+  material: string
+  scene: string
+  tone: string
+  icon: string
+  imagePath: string
+} {
+  return {
+    id: item.id,
+    name: item.name,
+    color: item.color,
+    material: item.material,
+    scene: item.scene,
+    tone: item.tone || inferTone(item.color),
+    icon: categoryToIcon(item.category),
+    imagePath: item.imagePath
+  }
+}
+
+/** 根据筛选标签做前端过滤 */
+function filterItems(
+  items: Array<ReturnType<typeof toDisplayItem>>,
+  filter: string,
+  allClothes: ClothingItem[]
+): Array<ReturnType<typeof toDisplayItem>> {
+  if (!filter || filter === '全部') return items
+
+  return items.filter((displayItem) => {
+    // 从原始数据中找到对应条目
+    const original = allClothes.find((c) => c.id === displayItem.id)
+    if (!original) return false
+
+    // 类别匹配
+    if (original.category === filter) return true
+    // 材质匹配
+    if (original.material.includes(filter)) return true
+    // 场景匹配
+    if (original.scene.includes(filter)) return true
+    // 季节匹配
+    if (original.season.includes(filter)) return true
+    // 颜色关键词
+    if (original.color.includes(filter)) return true
+    // 通用标签匹配
+    if (filter === '可叠穿' && (original.category === '外套' || original.category === '上装')) return true
+    if (filter === '低饱和色' && ['oat', 'cream', 'blue', 'green'].includes(displayItem.tone)) return true
+
+    return false
+  })
+}
 
 createComponent({
   data: {
     stats: [
-      { label: '总单品', value: '128' },
-      { label: '春夏可穿', value: '46' },
-      { label: '一周常穿', value: '12' }
+      { label: '总单品', value: '0' },
+      { label: '春夏可穿', value: '0' },
+      { label: '一周常穿', value: '0' }
     ],
     actions: [
       { title: '拍照录入', desc: '上传新衣物，自动识别类别和颜色' },
       { title: '智能整理', desc: '按季节、场合和材质快速分类' }
     ],
-    filters: ['春日通勤', '低饱和色', '外套', '针织', '可叠穿', '约会场合'],
-    items: [
-      { name: '燕麦针织开衫', color: '燕麦白', material: '羊毛混纺', scene: '通勤 / 室内冷气', tone: 'oat', icon: 'KNIT' },
-      { name: '雾蓝直筒牛仔裤', color: '雾蓝', material: '丹宁', scene: '通勤 / 周末', tone: 'blue', icon: 'DENIM' },
-      { name: '奶油风衣外套', color: '奶油杏', material: '防皱棉', scene: '早晚温差', tone: 'cream', icon: 'COAT' },
-      { name: '黑色乐福鞋', color: '曜石黑', material: '牛皮', scene: '通勤 / 正式', tone: 'black', icon: 'SHOE' },
-      { name: '鼠尾草衬衫', color: '鼠尾草绿', material: '天丝', scene: '办公室', tone: 'green', icon: 'SHIRT' },
-      { name: '焦糖托特包', color: '焦糖棕', material: '皮革', scene: '通勤收纳', tone: 'brown', icon: 'BAG' }
-    ]
+    filters: ['全部', '春日通勤', '低饱和色', '外套', '针织', '可叠穿', '约会场合'],
+    activeFilter: '全部',
+    items: [] as ReturnType<typeof toDisplayItem>[]
+  },
+
+  attached() { this.refreshData() },
+
+  methods: {
+    /** 刷新衣物列表和统计数据 */
+    refreshData() {
+      const allClothes = getAllClothes()
+      const clothingStats: ClothingStats = getClothingStats()
+
+      // 按 createdAt 倒序
+      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
+      const displayItems = sorted.map(toDisplayItem)
+
+      // 应用当前筛选
+      const filtered = filterItems(displayItems, this.data.activeFilter, allClothes)
+
+      this.setData({
+        stats: [
+          { label: '总单品', value: String(clothingStats.total) },
+          { label: '春夏可穿', value: String(clothingStats.seasonCount) },
+          { label: '一周常穿', value: String(clothingStats.weekWorn) }
+        ],
+        items: filtered
+      })
+    },
+
+    /** 打开看板页 */
+    openDashboard() {
+      wx.navigateTo({
+        url: '/pages/closetDashboardPage/index'
+      })
+    },
+
+    /** 点击操作卡片 */
+    onTapAction(e: { currentTarget: { dataset: { index: number } } }) {
+      const index = e.currentTarget.dataset.index
+      if (index === 0) {
+        // 拍照录入 → 跳转添加页
+        wx.navigateTo({
+          url: '/pages/addClothesPage/index'
+        })
+      }
+    },
+
+    /** 点击筛选标签 */
+    onTapFilter(e: { currentTarget: { dataset: { filter: string } } }) {
+      const filter = e.currentTarget.dataset.filter
+      const allClothes = getAllClothes()
+      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
+      const displayItems = sorted.map(toDisplayItem)
+      const filtered = filterItems(displayItems, filter, allClothes)
+
+      this.setData({
+        activeFilter: filter,
+        items: filtered
+      })
+    },
+
+    /** 点击衣物卡片 → 跳转详情页 */
+    onTapItem(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      wx.navigateTo({
+        url: `/pages/clothingDetailPage/index?id=${id}`
+      })
+    },
+
+    /** 空状态 → 跳转添加页 */
+    goAddClothes() {
+      wx.switchTab({
+        url: '/pages/addClothesPage/index'
+      })
+    }
   }
 })
 </script>
@@ -75,7 +235,7 @@ createComponent({
 <style lang="less">
 .page {
   min-height: 100vh;
-  padding: 32rpx 24rpx 48rpx;
+  padding: 32rpx 24rpx 170rpx;
   background: linear-gradient(180deg, #f5ede3 0%, #efe4d8 100%);
   box-sizing: border-box;
 }
@@ -92,7 +252,30 @@ createComponent({
   padding: 32rpx;
 }
 
+.hero-card--pressed {
+  opacity: 0.86;
+  transform: scale(0.99);
+}
+
+.hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.hero-link {
+  flex-shrink: 0;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #1f3c34;
+  color: #fff8f0;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
 .eyebrow {
+  display: block;
   font-size: 22rpx;
   letter-spacing: 4rpx;
   color: #8c715d;
@@ -197,6 +380,11 @@ createComponent({
   font-size: 22rpx;
 }
 
+.chip--active {
+  background: #2a211b;
+  color: #fff8f0;
+}
+
 .wardrobe-card {
   padding-bottom: 12rpx;
 }
@@ -222,6 +410,12 @@ createComponent({
   justify-content: center;
   height: 180rpx;
   border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.item-image {
+  width: 100%;
+  height: 100%;
 }
 
 .item-cover--oat {
@@ -237,7 +431,7 @@ createComponent({
 }
 
 .item-cover--black {
-  background: linear-gradient(180deg, #535252 0%, #989592 100%);
+  background: linear-gradient(180deg, #535252 0%, #989898 100%);
 }
 
 .item-cover--green {
@@ -273,6 +467,61 @@ createComponent({
 
 .item-scene {
   color: #1f3c34;
+}
+
+/* 空状态 */
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 40rpx;
+}
+
+.empty-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: #efe3d8;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  font-weight: 600;
+  color: #8c715d;
+  line-height: 1;
+}
+
+.empty-title {
+  display: block;
+  margin-top: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #2d241c;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #8a7768;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.empty-btn {
+  margin-top: 32rpx;
+  padding: 20rpx 60rpx;
+  border-radius: 999rpx;
+  background: #1f3c34;
+}
+
+.empty-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff8f0;
 }
 </style>
 

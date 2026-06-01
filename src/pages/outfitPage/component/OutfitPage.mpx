@@ -1,0 +1,246 @@
+<template>
+  <view class="page outfit-page">
+    <view class="hero-card">
+      <text class="eyebrow">搭配记录</text>
+      <text class="hero-title">把常穿公式沉淀下来，明天出门更快。</text>
+    </view>
+
+    <!-- 新建按钮 -->
+    <view class="create-btn" bindtap="goCreate" hover-class="create-btn--pressed">
+      <text class="create-btn-icon">+</text>
+      <text class="create-btn-text">新建搭配</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{outfits.length === 0}}" class="empty-state">
+      <text class="empty-title">还没有搭配记录</text>
+      <text class="empty-desc">从衣橱选择单品，创建你的第一组搭配公式</text>
+    </view>
+
+    <!-- 搭配列表 -->
+    <view wx:else class="outfit-list">
+      <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="goDetail">
+        <view class="outfit-cover outfit-cover--{{item.tone}}">
+          <text class="outfit-label">{{item.scene}}</text>
+        </view>
+        <view class="outfit-body">
+          <text class="outfit-title">{{item.name}}</text>
+          <text class="outfit-desc">{{item.description || '暂无描述'}}</text>
+          <text class="outfit-count">{{item.clothingIds.length}} 件单品</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+import { getAllOutfits, getAllClothes, type OutfitItem, type ClothingItem } from '@/utils/storage'
+
+/** 将搭配与衣物信息组合为卡片展示数据 */
+function buildOutfitCards(outfits: OutfitItem[], clothes: ClothingItem[]): Array<{
+  id: string
+  name: string
+  scene: string
+  description: string
+  tone: string
+  clothingIds: string[]
+}> {
+  return outfits.map((o) => ({
+    id: o.id,
+    name: o.name,
+    scene: o.scene,
+    description: o.description,
+    tone: o.tone,
+    clothingIds: o.clothingIds
+  }))
+}
+
+createComponent({
+  data: {
+    outfits: [] as ReturnType<typeof buildOutfitCards>
+  },
+
+  attached() {
+    this.refreshData()
+  },
+
+  methods: {
+    refreshData() {
+      const outfits = getAllOutfits()
+      const clothes = getAllClothes()
+      const cards = buildOutfitCards(outfits, clothes)
+      this.setData({ outfits: cards })
+    },
+
+    goCreate() {
+      wx.navigateTo({ url: '/pages/outfitCreatePage/index' })
+    },
+
+    goDetail(e: { currentTarget: { dataset: { id: string } } }) {
+      wx.navigateTo({ url: `/pages/outfitDetailPage/index?id=${e.currentTarget.dataset.id}` })
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 32rpx 24rpx 170rpx;
+  background: #f6f6f6;
+  box-sizing: border-box;
+}
+
+.hero-card,
+.outfit-card {
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+}
+
+.hero-card {
+  padding: 34rpx 30rpx;
+}
+
+.eyebrow {
+  color: #ff2442;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 38rpx;
+  line-height: 1.38;
+  color: #222222;
+  font-weight: 700;
+}
+
+.create-btn {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border-radius: 8rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: 2rpx dashed #ff2442;
+}
+
+.create-btn--pressed { opacity: 0.8; }
+
+.create-btn-icon {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ff2442;
+  line-height: 1;
+}
+
+.create-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ff2442;
+}
+
+.empty-state {
+  margin-top: 40rpx;
+  padding: 60rpx 40rpx;
+  text-align: center;
+}
+
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #555555;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.outfit-list {
+  margin-top: 18rpx;
+}
+
+.outfit-card {
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 18rpx;
+}
+
+.outfit-card:last-child {
+  margin-bottom: 0;
+}
+
+.outfit-cover {
+  display: flex;
+  align-items: flex-end;
+  width: 220rpx;
+  min-height: 190rpx;
+  padding: 18rpx;
+  box-sizing: border-box;
+}
+
+.outfit-cover--oat { background: linear-gradient(150deg, #e5d7c3, #c4a97d); }
+.outfit-cover--blue { background: linear-gradient(150deg, #d8eafa, #769fc4); }
+.outfit-cover--cream { background: linear-gradient(150deg, #f5ead5, #d4b896); }
+.outfit-cover--black { background: linear-gradient(150deg, #989592, #535252); }
+.outfit-cover--green { background: linear-gradient(150deg, #d7e6dc, #6c8f7a); }
+.outfit-cover--brown { background: linear-gradient(150deg, #f4e7dc, #c5936b); }
+.outfit-cover--rose { background: linear-gradient(150deg, #ffe2e8, #d58b9b); }
+.outfit-cover--red { background: linear-gradient(150deg, #fce4ec, #d4a0a0); }
+.outfit-cover--pink { background: linear-gradient(150deg, #fce4ec, #e0b8c4); }
+.outfit-cover--gray { background: linear-gradient(150deg, #e8e8e8, #b5b5b5); }
+.outfit-cover--white { background: linear-gradient(150deg, #f8f8f8, #e0e0e0); }
+
+.outfit-label {
+  padding: 8rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(255, 255, 255, 0.82);
+  color: #2d2d2d;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.outfit-body {
+  flex: 1;
+  min-width: 0;
+  padding: 24rpx 24rpx 22rpx;
+}
+
+.outfit-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.outfit-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.55;
+  color: #696969;
+}
+
+.outfit-count {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

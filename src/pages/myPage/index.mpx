@@ -4,8 +4,13 @@
 
 <script lang="ts">
 import { createPage } from '@mpxjs/core'
+import { setCustomTabBarSelected } from '@/utils/tabBar'
 
-createPage({})
+createPage({
+  onShow() {
+    setCustomTabBarSelected(this, 4)
+  }
+})
 </script>
 
 <script type="application/json">

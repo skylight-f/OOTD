@@ -4,13 +4,19 @@
 
 <script lang="ts">
 import { createPage } from '@mpxjs/core'
+import { setCustomTabBarSelected } from '@/utils/tabBar'
 
-createPage({})
+createPage({
+  onShow() {
+    setCustomTabBarSelected(this, 0)
+  }
+})
 </script>
 
 <script type="application/json">
   {
     "navigationBarTitleText": "首页",
+    "navigationStyle": "custom",
     "usingComponents": {
       "HomePage": "./component/HomePage"
     }
