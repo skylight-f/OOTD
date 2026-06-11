@@ -108,6 +108,12 @@ createComponent({
     this.refreshData()
   },
 
+  pageLifetimes: {
+    show() {
+      this.refreshData()
+    }
+  },
+
   methods: {
     applyFilters() {
       const { allOutfits, activeScene, searchKey } = this.data
@@ -355,6 +361,7 @@ createComponent({
   margin-bottom: 18rpx;
   border-radius: 8rpx;
   background: #ffffff;
+  position: relative;
   box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
   animation: fadeSlideUp 0.4s ease-out backwards;
 }
@@ -391,6 +398,72 @@ createComponent({
   z-index: 2;
   background: #ffffff;
   transition: transform 0.3s ease;
+}
+
+.outfit-cover {
+  width: 160rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 14rpx;
+  box-sizing: border-box;
+}
+
+.outfit-cover--oat { background: linear-gradient(135deg, #e5d7c3, #f6efe6); }
+.outfit-cover--blue { background: linear-gradient(135deg, #bfd0e3, #edf4fb); }
+.outfit-cover--cream { background: linear-gradient(135deg, #e6dccd, #fbf7ef); }
+.outfit-cover--black { background: linear-gradient(135deg, #535252, #989592); }
+.outfit-cover--green { background: linear-gradient(135deg, #bfd0c6, #f0f7f2); }
+.outfit-cover--brown { background: linear-gradient(135deg, #c5936b, #f4e7dc); }
+.outfit-cover--red { background: linear-gradient(135deg, #d4a0a0, #f5e6e6); }
+.outfit-cover--pink { background: linear-gradient(135deg, #e0b8c4, #f8edf2); }
+.outfit-cover--gray { background: linear-gradient(135deg, #b5b5b5, #e8e8e8); }
+.outfit-cover--white { background: linear-gradient(135deg, #e8e8e8, #f8f8f8); }
+
+.outfit-label {
+  padding: 6rpx 14rpx;
+  border-radius: 6rpx;
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 22rpx;
+  color: #2d2d2d;
+  font-weight: 600;
+}
+
+.outfit-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20rpx 24rpx;
+  min-width: 0;
+}
+
+.outfit-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #222222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outfit-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #777777;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outfit-count {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #999999;
 }
 
 .outfit-delete {

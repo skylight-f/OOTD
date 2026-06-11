@@ -6,6 +6,7 @@
     "noImplicitThis": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "lib": [
       "esnext",

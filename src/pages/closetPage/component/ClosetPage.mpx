@@ -16,12 +16,23 @@
       </view>
     </view>
 
+    <view class="action-row">
+      <view class="action-card" bindtap="goAddClothes" hover-class="action-card--pressed">
+        <text class="action-title">拍照录入</text>
+        <text class="action-desc">上传新衣物，自动识别类别和颜色</text>
+      </view>
+      <view class="action-card" bindtap="onTapClassify" hover-class="action-card--pressed">
+        <text class="action-title">智能整理</text>
+        <text class="action-desc">按季节、场合和材质快速分类</text>
+      </view>
+    </view>
+
     <!-- 搜索栏 -->
     <view class="search-bar">
       <text class="search-icon">🔍</text>
       <input
         class="search-input"
-        placeholder="搜索衣物名称、颜色、品牌…"
+        placeholder="搜索衣物名称、颜色、材质"
         value="{{searchKey}}"
         bindinput="onSearchInput"
         confirm-type="search"
@@ -29,102 +40,57 @@
       <text wx:if="{{searchKey}}" class="search-clear" bindtap="clearSearch">✕</text>
     </view>
 
-    <view class="action-row">
-      <view
-        wx:for="{{actions}}"
-        wx:key="title"
-        class="action-card"
-        bindtap="onTapAction"
-        data-index="{{index}}"
-      >
-        <text class="action-title">{{item.title}}</text>
-        <text class="action-desc">{{item.desc}}</text>
-      </view>
-    </view>
-
+    <!-- 筛选标签 -->
     <view class="section-card">
       <text class="section-title">筛选条件</text>
       <view class="chip-group">
         <text
-          wx:for="{{filters}}"
+          wx:for="{{filterOptions}}"
           wx:key="*this"
           class="chip {{activeFilter === item ? 'chip--active' : ''}}"
-          bindtap="onTapFilter"
           data-filter="{{item}}"
+          bindtap="onTapFilter"
         >{{item}}</text>
       </view>
     </view>
 
-    <!-- 有衣物时展示列表 -->
-    <view class="section-card wardrobe-card" wx:if="{{items.length > 0}}">
+    <!-- 衣物列表 -->
+    <view class="section-card wardrobe-card">
       <view class="section-head">
-        <text class="section-title">{{multiMode ? '已选 ' + selectedIds.length + ' 件' : '最近常穿'}}</text>
-        <text class="section-subtitle">{{items.length}} 件单品</text>
+        <text class="section-title">{{activeFilter === '全部' ? '所有单品' : activeFilter}}</text>
+        <text class="section-subtitle">{{displayItems.length}} 件单品</text>
       </view>
 
-      <view class="wardrobe-grid">
+      <!-- 空状态 -->
+      <view wx:if="{{displayItems.length === 0}}" class="wardrobe-empty">
+        <text class="wardrobe-empty-icon">👗</text>
+        <text class="wardrobe-empty-title">{{searchKey || activeFilter !== '全部' ? '没有匹配的衣物' : '衣橱还是空的'}}</text>
+        <text class="wardrobe-empty-desc">{{searchKey || activeFilter !== '全部' ? '试试切换筛选条件或清空关键词' : '去添加你的第一件衣物吧'}}</text>
+      </view>
+
+      <view wx:else class="wardrobe-grid">
         <view
-          wx:for="{{items}}"
+          wx:for="{{displayItems}}"
           wx:key="id"
-          class="wardrobe-item {{swipeId === item.id ? 'wardrobe-item--swiped' : ''}} {{multiMode ? 'wardrobe-item--multi' : ''}} {{multiMode && selectedIds.indexOf(item.id) >= 0 ? 'wardrobe-item--selected' : ''}}"
+          class="wardrobe-item {{swipeId === item.id ? 'wardrobe-item--swiped' : ''}}"
           data-id="{{item.id}}"
-          bindtap="onTapItem"
-          bindlongpress="onLongPress"
+          bindtap="goDetail"
           bindtouchstart="onSwipeStart"
           bindtouchend="onSwipeEnd"
         >
-          <view class="item-inner">
-            <!-- 多选勾选标记 -->
-            <view wx:if="{{multiMode}}" class="item-check {{selectedIds.indexOf(item.id) >= 0 ? 'item-check--active' : ''}}">
-              <text wx:if="{{selectedIds.indexOf(item.id) >= 0}}" class="item-check-icon">✓</text>
-            </view>
+          <view class="wardrobe-item-inner">
             <view class="item-cover item-cover--{{item.tone}}">
-              <image
-                wx:if="{{item.imagePath}}"
-                class="item-image"
-                src="{{item.imagePath}}"
-                mode="aspectFill"
-              />
+              <image wx:if="{{item.imagePath}}" class="item-image" src="{{item.imagePath}}" mode="aspectFill" />
               <text wx:else class="item-icon">{{item.icon}}</text>
             </view>
             <text class="item-name">{{item.name}}</text>
             <text class="item-meta">{{item.color}} · {{item.material}}</text>
             <text class="item-scene">{{item.scene}}</text>
           </view>
-          <view wx:if="{{!multiMode}}" class="item-delete" data-id="{{item.id}}" catchtap="onDeleteItem">
+          <view class="item-delete" data-id="{{item.id}}" catchtap="onDeleteItem">
             <text class="item-delete-text">删除</text>
           </view>
         </view>
-      </view>
-    </view>
-
-    <!-- 多选模式底部操作栏 -->
-    <view wx:if="{{multiMode}}" class="multi-bar">
-      <view class="multi-bar-left" bindtap="toggleSelectAll">
-        <view class="multi-bar-check {{selectedIds.length === items.length && items.length > 0 ? 'multi-bar-check--active' : ''}}">
-          <text wx:if="{{selectedIds.length === items.length && items.length > 0}}" class="multi-bar-check-icon">✓</text>
-        </view>
-        <text class="multi-bar-label">全选</text>
-      </view>
-      <view class="multi-bar-right">
-        <view class="multi-bar-btn multi-bar-btn--cancel" bindtap="exitMultiMode">
-          <text class="multi-bar-btn-text">取消</text>
-        </view>
-        <view class="multi-bar-btn multi-bar-btn--delete" bindtap="batchDelete">
-          <text class="multi-bar-btn-text">删除（{{selectedIds.length}}）</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 空状态 -->
-    <view class="section-card empty-card" wx:if="{{items.length === 0}}">
-      <view class="empty-icon-wrap">
-        <text class="empty-icon">+</text>
-      </view>
-      <text class="empty-title">还没有衣物</text>
-      <text class="empty-desc">去添加第一件吧，开始整理你的数字衣橱。</text>
-      <view class="empty-btn" bindtap="goAddClothes">
-        <text class="empty-btn-text">去添加</text>
       </view>
     </view>
   </view>
@@ -132,12 +98,15 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllClothes, getClothingStats, deleteClothing, inferTone, categoryToIcon } from '@/utils/storage'
-import type { ClothingItem, ClothingStats } from '@/utils/storage'
+import {
+  getAllClothes,
+  deleteClothing,
+  getClothingStats,
+  CATEGORY_OPTIONS,
+  type ClothingItem
+} from '@/utils/storage'
 
-
-/** 将 ClothingItem 转换为列表展示数据 */
-function toDisplayItem(item: ClothingItem): {
+interface DisplayItem {
   id: string
   name: string
   color: string
@@ -146,85 +115,146 @@ function toDisplayItem(item: ClothingItem): {
   tone: string
   icon: string
   imagePath: string
-} {
+}
+
+function toDisplay(item: ClothingItem): DisplayItem {
+  const iconMap: Record<string, string> = {
+    '上装': 'TOP', '下装': 'BOTTOM', '外套': 'COAT',
+    '鞋履': 'SHOE', '配饰': 'ACC', '包袋': 'BAG',
+    '连衣裙': 'DRESS', '半裙': 'SKIRT'
+  }
   return {
     id: item.id,
     name: item.name,
     color: item.color,
     material: item.material,
     scene: item.scene,
-    tone: item.tone || inferTone(item.color),
-    icon: categoryToIcon(item.category),
+    tone: item.tone || 'oat',
+    icon: iconMap[item.category] || 'ITEM',
     imagePath: item.imagePath
   }
 }
 
-/** 根据筛选标签做前端过滤 */
-function filterItems(
-  items: Array<ReturnType<typeof toDisplayItem>>,
-  filter: string,
-  allClothes: ClothingItem[]
-): Array<ReturnType<typeof toDisplayItem>> {
-  if (!filter || filter === '全部') return items
-
-  return items.filter((displayItem) => {
-    // 从原始数据中找到对应条目
-    const original = allClothes.find((c) => c.id === displayItem.id)
-    if (!original) return false
-
-    // 类别匹配
-    if (original.category === filter) return true
-    // 材质匹配
-    if (original.material.includes(filter)) return true
-    // 场景匹配
-    if (original.scene.includes(filter)) return true
-    // 季节匹配
-    if (original.season.includes(filter)) return true
-    // 颜色关键词
-    if (original.color.includes(filter)) return true
-    // 通用标签匹配
-    if (filter === '可叠穿' && (original.category === '外套' || original.category === '上装')) return true
-    if (filter === '低饱和色' && ['oat', 'cream', 'blue', 'green'].includes(displayItem.tone)) return true
-
-    return false
-  })
-}
-
 createComponent({
   data: {
+    allItems: [] as DisplayItem[],
+    displayItems: [] as DisplayItem[],
     stats: [
       { label: '总单品', value: '0' },
       { label: '春夏可穿', value: '0' },
       { label: '一周常穿', value: '0' }
     ],
-    actions: [
-      { title: '拍照录入', desc: '上传新衣物，自动识别类别和颜色' },
-      { title: '智能整理', desc: '按季节、场合和材质快速分类' }
-    ],
-    filters: ['全部', '春日通勤', '低饱和色', '外套', '针织', '可叠穿', '约会场合'],
+    filterOptions: ['全部', ...CATEGORY_OPTIONS],
     activeFilter: '全部',
     searchKey: '',
     swipeId: '',
-    touchStartX: 0,
-    multiMode: false,
-    selectedIds: [] as string[],
-    items: [] as ReturnType<typeof toDisplayItem>[]
+    touchStartX: 0
   },
 
-  attached() { this.refreshData() },
+  attached() {
+    this.refreshData()
+  },
+
+  pageLifetimes: {
+    show() {
+      this.refreshData()
+    }
+  },
 
   methods: {
-    /** 触摸开始 */
-    onSwipeStart(e: { touches: Array<{ clientX: number }> }) {
+    refreshData() {
+      const clothes = getAllClothes()
+      const statsData = getClothingStats()
+
+      const items = clothes.map(toDisplay)
+
       this.setData({
-        touchStartX: e.touches[0].clientX
+        allItems: items,
+        stats: [
+          { label: '总单品', value: String(statsData.total) },
+          { label: '春夏可穿', value: String(statsData.seasonCount) },
+          { label: '一周常穿', value: String(statsData.weekWorn) }
+        ]
       })
+      this.applyFilters()
     },
 
-    /** 触摸结束，判断滑动方向 */
+    applyFilters() {
+      const { allItems, activeFilter, searchKey } = this.data
+      const key = searchKey.trim().toLowerCase()
+
+      let filtered = allItems
+      if (activeFilter !== '全部') {
+        const categoryMap: Record<string, string> = {
+          '上装': '上装', '下装': '下装', '外套': '外套',
+          '鞋履': '鞋履', '配饰': '配饰', '包袋': '包袋',
+          '连衣裙': '连衣裙', '半裙': '半裙'
+        }
+        const targetCategory = categoryMap[activeFilter] || activeFilter
+        filtered = filtered.filter((item) => {
+          const iconMap: Record<string, string> = {
+            'TOP': '上装', 'BOTTOM': '下装', 'COAT': '外套',
+            'SHOE': '鞋履', 'ACC': '配饰', 'BAG': '包袋',
+            'DRESS': '连衣裙', 'SKIRT': '半裙'
+          }
+          const itemCategory = iconMap[item.icon] || ''
+          return itemCategory === targetCategory
+        })
+      }
+
+      if (key) {
+        filtered = filtered.filter((item) =>
+          item.name.toLowerCase().includes(key) ||
+          item.color.toLowerCase().includes(key) ||
+          item.material.toLowerCase().includes(key) ||
+          item.scene.toLowerCase().includes(key)
+        )
+      }
+
+      this.setData({ displayItems: filtered })
+    },
+
+    onSearchInput(e: { detail: { value: string } }) {
+      this.setData({ searchKey: e.detail.value })
+      this.applyFilters()
+    },
+
+    clearSearch() {
+      this.setData({ searchKey: '' })
+      this.applyFilters()
+    },
+
+    onTapFilter(e: { currentTarget: { dataset: { filter: string } } }) {
+      this.setData({ activeFilter: e.currentTarget.dataset.filter })
+      this.applyFilters()
+    },
+
+    openDashboard() {
+      wx.navigateTo({ url: '/pages/closetDashboardPage/index' })
+    },
+
+    goAddClothes() {
+      wx.navigateTo({ url: '/pages/addClothesPage/index' })
+    },
+
+    onTapClassify() {
+      wx.showToast({ title: '智能整理功能开发中', icon: 'none', duration: 1500 })
+    },
+
+    goDetail(e: { currentTarget: { dataset: { id: string } } }) {
+      if (this.data.swipeId === e.currentTarget.dataset.id) {
+        this.setData({ swipeId: '' })
+        return
+      }
+      wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${e.currentTarget.dataset.id}` })
+    },
+
+    onSwipeStart(e: { touches: Array<{ clientX: number }> }) {
+      this.setData({ touchStartX: e.touches[0].clientX })
+    },
+
     onSwipeEnd(e: { changedTouches: Array<{ clientX: number }>; currentTarget: { dataset: { id: string } } }) {
       const deltaX = e.changedTouches[0].clientX - this.data.touchStartX
-      // 左滑超过50px才展开删除按钮
       if (deltaX < -50) {
         this.setData({ swipeId: e.currentTarget.dataset.id })
       } else if (deltaX > 30) {
@@ -232,12 +262,14 @@ createComponent({
       }
     },
 
-    /** 删除衣物 */
     onDeleteItem(e: { currentTarget: { dataset: { id: string } } }) {
       const id = e.currentTarget.dataset.id
+      const item = this.data.allItems.find((i) => i.id === id)
       wx.showModal({
         title: '确认删除',
-        content: '删除后无法恢复，是否继续？',
+        content: `确定要删除「${item?.name || '该衣物'}」吗？删除后无法恢复。`,
+        confirmText: '删除',
+        confirmColor: '#ff2442',
         success: (res) => {
           if (res.confirm) {
             deleteClothing(id)
@@ -245,168 +277,6 @@ createComponent({
             wx.showToast({ title: '已删除', icon: 'success' })
           }
           this.setData({ swipeId: '' })
-        }
-      })
-    },
-    /** 搜索输入 */
-    onSearchInput(e: { detail: { value: string } }) {
-      this.setData({ searchKey: e.detail.value })
-      this.applyFilters()
-    },
-
-    /** 清空搜索 */
-    clearSearch() {
-      this.setData({ searchKey: '' })
-      this.applyFilters()
-    },
-
-    /** 应用筛选和搜索 */
-    applyFilters() {
-      const allClothes = getAllClothes()
-      const sorted = [...allClothes].sort((a, b) => b.createdAt - a.createdAt)
-      const displayItems = sorted.map(toDisplayItem)
-      
-      // 先应用标签筛选
-      let filtered = filterItems(displayItems, this.data.activeFilter, allClothes)
-      
-      // 再应用搜索关键词
-      if (this.data.searchKey) {
-        const key = this.data.searchKey.trim().toLowerCase()
-        filtered = filtered.filter((item) => {
-          const original = allClothes.find((c) => c.id === item.id)
-          if (!original) return false
-          return (
-            original.name.toLowerCase().includes(key) ||
-            original.color.toLowerCase().includes(key) ||
-            (original.brand && original.brand.toLowerCase().includes(key)) ||
-            original.material.toLowerCase().includes(key)
-          )
-        })
-      }
-      
-      this.setData({ items: filtered })
-    },
-
-    /** 刷新衣物列表和统计数据 */
-    refreshData() {
-      const allClothes = getAllClothes()
-      const clothingStats: ClothingStats = getClothingStats()
-
-      this.setData({
-        stats: [
-          { label: '总单品', value: String(clothingStats.total) },
-          { label: '春夏可穿', value: String(clothingStats.seasonCount) },
-          { label: '一周常穿', value: String(clothingStats.weekWorn) }
-        ]
-      })
-
-      this.applyFilters()
-    },
-
-    /** 打开看板页 */
-    openDashboard() {
-      wx.navigateTo({
-        url: '/pages/closetDashboardPage/index'
-      })
-    },
-
-    /** 点击操作卡片 */
-    onTapAction(e: { currentTarget: { dataset: { index: number } } }) {
-      const index = e.currentTarget.dataset.index
-      if (index === 0) {
-        // 拍照录入 → 跳转添加页
-        wx.navigateTo({
-          url: '/pages/addClothesPage/index'
-        })
-      }
-    },
-
-    /** 点击筛选标签 */
-    onTapFilter(e: { currentTarget: { dataset: { filter: string } } }) {
-      this.setData({ activeFilter: e.currentTarget.dataset.filter })
-      this.applyFilters()
-    },
-
-    /** 点击衣物卡片 → 跳转详情页 */
-    onTapItem(e: { currentTarget: { dataset: { id: string } } }) {
-      if (this.data.multiMode) {
-        this.toggleSelect(e)
-        return
-      }
-      if (this.data.swipeId === e.currentTarget.dataset.id) {
-        this.setData({ swipeId: '' })
-        return
-      }
-      const id = e.currentTarget.dataset.id
-      wx.navigateTo({
-        url: `/pages/clothingDetailPage/index?id=${id}`
-      })
-    },
-
-    /** 空状态 → 跳转添加页 */
-    goAddClothes() {
-      wx.switchTab({
-        url: '/pages/addClothesPage/index'
-      })
-    },
-
-    /** 长按进入多选模式 */
-    onLongPress(e: { currentTarget: { dataset: { id: string } } }) {
-      if (this.data.multiMode) return
-      ;(wx as any).vibrateShort({ type: 'medium' })
-      this.setData({
-        multiMode: true,
-        selectedIds: [e.currentTarget.dataset.id],
-        swipeId: ''
-      })
-    },
-
-    /** 切换单个选中 */
-    toggleSelect(e: { currentTarget: { dataset: { id: string } } }) {
-      const id = e.currentTarget.dataset.id
-      const selected = [...this.data.selectedIds]
-      const idx = selected.indexOf(id)
-      if (idx > -1) {
-        selected.splice(idx, 1)
-      } else {
-        selected.push(id)
-      }
-      this.setData({ selectedIds: selected })
-    },
-
-    /** 全选/取消全选 */
-    toggleSelectAll() {
-      if (this.data.selectedIds.length === this.data.items.length) {
-        this.setData({ selectedIds: [] })
-      } else {
-        this.setData({ selectedIds: this.data.items.map(i => i.id) })
-      }
-    },
-
-    /** 退出多选模式 */
-    exitMultiMode() {
-      this.setData({ multiMode: false, selectedIds: [] })
-    },
-
-    /** 批量删除 */
-    batchDelete() {
-      const { selectedIds } = this.data
-      if (selectedIds.length === 0) {
-        wx.showToast({ title: '请选择要删除的衣物', icon: 'none' })
-        return
-      }
-      wx.showModal({
-        title: '确认删除',
-        content: `确定删除选中的 ${selectedIds.length} 件衣物？`,
-        confirmText: '删除',
-        confirmColor: '#ff2442',
-        success: (res) => {
-          if (res.confirm) {
-            selectedIds.forEach(id => deleteClothing(id))
-            wx.showToast({ title: '已删除', icon: 'success' })
-            this.exitMultiMode()
-            this.refreshData()
-          }
         }
       })
     }
@@ -499,41 +369,6 @@ createComponent({
   color: #7b685b;
 }
 
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 20rpx;
-  padding: 0 18rpx;
-  height: 76rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 250, 245, 0.98);
-  box-shadow: 0 12rpx 30rpx rgba(92, 63, 39, 0.08);
-}
-
-.search-icon {
-  font-size: 26rpx;
-  color: #8a7768;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 24rpx;
-  color: #2d241c;
-}
-
-.search-clear {
-  width: 38rpx;
-  height: 38rpx;
-  border-radius: 50%;
-  background: #efe3d8;
-  font-size: 20rpx;
-  color: #6d5a4a;
-  line-height: 38rpx;
-  text-align: center;
-}
-
 .action-row {
   display: flex;
   gap: 16rpx;
@@ -543,6 +378,11 @@ createComponent({
 .action-card {
   flex: 1;
   padding: 24rpx;
+}
+
+.action-card--pressed {
+  opacity: 0.86;
+  transform: scale(0.98);
 }
 
 .action-title {
@@ -558,6 +398,41 @@ createComponent({
   font-size: 22rpx;
   line-height: 1.6;
   color: #7a6759;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  height: 76rpx;
+  margin-top: 20rpx;
+  padding: 0 18rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+}
+
+.search-icon {
+  font-size: 24rpx;
+  color: #a3a3a3;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  color: #222222;
+}
+
+.search-clear {
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  line-height: 34rpx;
+  text-align: center;
+  background: #f2f2f2;
+  color: #7d7d7d;
+  font-size: 18rpx;
 }
 
 .section-card {
@@ -598,12 +473,38 @@ createComponent({
 }
 
 .chip--active {
-  background: #2a211b;
-  color: #fff8f0;
+  background: #ff2442;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .wardrobe-card {
   padding-bottom: 12rpx;
+}
+
+.wardrobe-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 40rpx;
+}
+
+.wardrobe-empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.wardrobe-empty-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #555555;
+  margin-bottom: 12rpx;
+}
+
+.wardrobe-empty-desc {
+  font-size: 24rpx;
+  color: #999999;
+  text-align: center;
 }
 
 .wardrobe-grid {
@@ -614,12 +515,12 @@ createComponent({
 }
 
 .wardrobe-item {
-  position: relative;
-  overflow: hidden;
   width: 48%;
   margin-bottom: 20rpx;
+  overflow: hidden;
   border-radius: 24rpx;
   background: #fffaf6;
+  position: relative;
   animation: fadeSlideUp 0.4s ease-out backwards;
 }
 
@@ -633,7 +534,7 @@ createComponent({
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(20rpx);
   }
   to {
     opacity: 1;
@@ -641,16 +542,15 @@ createComponent({
   }
 }
 
-.wardrobe-item--swiped .item-inner {
-  transform: translateX(-160rpx);
-}
-
-.item-inner {
+.wardrobe-item-inner {
   position: relative;
   z-index: 2;
-  padding: 18rpx;
   background: #fffaf6;
   transition: transform 0.3s ease;
+}
+
+.wardrobe-item--swiped .wardrobe-item-inner {
+  transform: translateX(-120rpx);
 }
 
 .item-delete {
@@ -658,7 +558,7 @@ createComponent({
   right: 0;
   top: 0;
   bottom: 0;
-  width: 160rpx;
+  width: 120rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -668,7 +568,7 @@ createComponent({
 
 .item-delete-text {
   color: #fff;
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 500;
 }
 
@@ -699,7 +599,7 @@ createComponent({
 }
 
 .item-cover--black {
-  background: linear-gradient(180deg, #535252 0%, #989898 100%);
+  background: linear-gradient(180deg, #535252 0%, #989592 100%);
 }
 
 .item-cover--green {
@@ -708,6 +608,22 @@ createComponent({
 
 .item-cover--brown {
   background: linear-gradient(180deg, #c5936b 0%, #f4e7dc 100%);
+}
+
+.item-cover--red {
+  background: linear-gradient(180deg, #d4a0a0 0%, #f5e6e6 100%);
+}
+
+.item-cover--pink {
+  background: linear-gradient(180deg, #e0b8c4 0%, #f8edf2 100%);
+}
+
+.item-cover--gray {
+  background: linear-gradient(180deg, #b5b5b5 0%, #e8e8e8 100%);
+}
+
+.item-cover--white {
+  background: linear-gradient(180deg, #e8e8e8 0%, #f8f8f8 100%);
 }
 
 .item-icon {
@@ -720,204 +636,29 @@ createComponent({
 .item-name {
   display: block;
   margin-top: 16rpx;
+  padding: 0 18rpx;
   font-size: 26rpx;
   color: #2d241c;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.item-meta,
-.item-scene {
+.item-meta {
   display: block;
   margin-top: 8rpx;
+  padding: 0 18rpx;
   font-size: 22rpx;
   color: #7d6a5d;
 }
 
 .item-scene {
+  display: block;
+  margin-top: 8rpx;
+  padding: 0 18rpx 18rpx;
+  font-size: 22rpx;
   color: #1f3c34;
-}
-
-/* 多选模式 */
-.wardrobe-item--multi {
-  transition: all 0.3s ease;
-}
-
-.wardrobe-item--selected {
-  transform: scale(0.95);
-  box-shadow: 0 0 0 4rpx #1f3c34;
-}
-
-.item-check {
-  position: absolute;
-  top: 12rpx;
-  right: 12rpx;
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2rpx solid #ddd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  transition: all 0.2s ease;
-}
-
-.item-check--active {
-  background: #1f3c34;
-  border-color: #1f3c34;
-}
-
-.item-check-icon {
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
-.multi-bar {
-  position: fixed;
-  bottom: 170rpx;
-  left: 24rpx;
-  right: 24rpx;
-  height: 100rpx;
-  background: rgba(255, 250, 245, 0.98);
-  border-radius: 28rpx;
-  box-shadow: 0 -8rpx 32rpx rgba(92, 63, 39, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28rpx;
-  z-index: 100;
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(120rpx);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.multi-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.multi-bar-check {
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2rpx solid #ddd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.multi-bar-check--active {
-  background: #1f3c34;
-  border-color: #1f3c34;
-}
-
-.multi-bar-check-icon {
-  color: #fff;
-  font-size: 26rpx;
-  font-weight: 700;
-}
-
-.multi-bar-label {
-  font-size: 26rpx;
-  color: #2d241c;
-  font-weight: 500;
-}
-
-.multi-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.multi-bar-btn {
-  padding: 16rpx 32rpx;
-  border-radius: 999rpx;
-  font-size: 26rpx;
-  font-weight: 600;
-}
-
-.multi-bar-btn--cancel {
-  background: #efe3d8;
-  color: #6d5a4a;
-}
-
-.multi-bar-btn--delete {
-  background: #ff3b30;
-  color: #fff;
-}
-
-.multi-bar-btn-text {
-  font-size: 26rpx;
-  font-weight: 600;
-}
-
-/* 空状态 */
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60rpx 40rpx;
-}
-
-.empty-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  background: #efe3d8;
-}
-
-.empty-icon {
-  font-size: 56rpx;
-  font-weight: 600;
-  color: #8c715d;
-  line-height: 1;
-}
-
-.empty-title {
-  display: block;
-  margin-top: 24rpx;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #2d241c;
-}
-
-.empty-desc {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: #8a7768;
-  text-align: center;
-  line-height: 1.6;
-}
-
-.empty-btn {
-  margin-top: 32rpx;
-  padding: 20rpx 60rpx;
-  border-radius: 999rpx;
-  background: #1f3c34;
-}
-
-.empty-btn-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #fff8f0;
 }
 </style>
 

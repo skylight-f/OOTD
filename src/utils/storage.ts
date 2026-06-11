@@ -342,7 +342,7 @@ export function categoryToIcon(category: string): string {
 }
 
 export const CATEGORY_OPTIONS = ['上装', '下装', '外套', '鞋履', '配饰', '包袋', '连衣裙', '半裙']
-export const SEASON_OPTIONS = ['春夏', '秋冬', '四季']
+export const SEASON_OPTIONS = ['春秋', '冬季', '夏季', '四季']
 export const SCENE_OPTIONS = ['通勤', '周末', '约会', '运动', '正式', '休闲', '旅行', '居家']
 
 // ============================================================
@@ -411,4 +411,59 @@ export function recordOutfitWear(id: string): boolean {
   })
 
   return true
+}
+
+// ============================================================
+// 数据导出/导入
+// ============================================================
+
+/** 导出所有数据（衣物 + 搭配） */
+export function exportAllData(): string {
+  const clothes = readClothesList()
+  const outfits = readOutfitList()
+  const data = {
+    version: 1,
+    exportTime: Date.now(),
+    clothes,
+    outfits
+  }
+  return JSON.stringify(data)
+}
+
+/** 导入数据（合并或覆盖） */
+export function importData(jsonStr: string, mode: 'merge' | 'cover' = 'merge'): { success: boolean; message: string } {
+  try {
+    const data = JSON.parse(jsonStr)
+    if (!data.clothes || !Array.isArray(data.clothes)) {
+      return { success: false, message: '数据格式错误' }
+    }
+
+    if (mode === 'cover') {
+      writeClothesList(data.clothes)
+      writeOutfitList(data.outfits || [])
+    } else {
+      // 合并模式：跳过已存在的 ID
+      const existingClothes = readClothesList()
+      const existingIds = new Set(existingClothes.map((c) => c.id))
+      const newClothes = data.clothes.filter((c: ClothingItem) => !existingIds.has(c.id))
+      writeClothesList([...existingClothes, ...newClothes])
+
+      const existingOutfits = readOutfitList()
+      const existingOutfitIds = new Set(existingOutfits.map((o) => o.id))
+      const newOutfits = (data.outfits || []).filter((o: OutfitItem) => !existingOutfitIds.has(o.id))
+      writeOutfitList([...existingOutfits, ...newOutfits])
+    }
+
+    return { success: true, message: `导入成功` }
+  } catch (e) {
+    return { success: false, message: '解析数据失败' }
+  }
+}
+
+/** 通过微信分享导出数据 */
+export function getExportData(): { clothes: ClothingItem[]; outfits: OutfitItem[] } {
+  return {
+    clothes: readClothesList(),
+    outfits: readOutfitList()
+  }
 }

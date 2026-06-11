@@ -1,0 +1,17 @@
+<template>
+  <CalendarPage />
+</template>
+
+<script lang="ts">
+import { createPage } from '@mpxjs/core'
+createPage({})
+</script>
+
+<script type="application/json">
+  {
+    "navigationBarTitleText": "穿搭日历",
+    "usingComponents": {
+      "CalendarPage": "./component/CalendarPage"
+    }
+  }
+</script>

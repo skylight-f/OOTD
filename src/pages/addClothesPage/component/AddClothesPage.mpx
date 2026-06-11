@@ -200,16 +200,6 @@
           </view>
         </view>
       </view>
-
-      <!-- 操作按钮 -->
-      <view class="form-actions">
-        <view class="btn-cancel" bindtap="onCancel">
-          <text class="btn-cancel-text">取消</text>
-        </view>
-        <view class="btn-save" bindtap="onSave">
-          <text class="btn-save-text">保存</text>
-        </view>
-      </view>
     </view>
 
     <!-- 录入建议（非表单模式时显示） -->
@@ -220,6 +210,16 @@
           <text class="tip-dot"></text>
           <text class="tip-text">{{item}}</text>
         </view>
+      </view>
+    </view>
+
+    <!-- 底部固定操作按钮（表单模式时显示） -->
+    <view class="form-actions-fixed" wx:if="{{showForm}}">
+      <view class="btn-cancel" bindtap="onCancel">
+        <text class="btn-cancel-text">取消</text>
+      </view>
+      <view class="btn-save" bindtap="onSave">
+        <text class="btn-save-text">保存</text>
       </view>
     </view>
   </view>
@@ -657,6 +657,7 @@ createComponent({
 
 .form-section {
   margin-top: 18rpx;
+  padding-bottom: 260rpx;
 }
 
 .form-card {
@@ -794,6 +795,20 @@ createComponent({
   gap: 20rpx;
   margin-top: 32rpx;
   padding: 0 28rpx;
+}
+
+.form-actions-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 28rpx;
+  padding-bottom: calc(148rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  box-shadow: 0 -8rpx 24rpx rgba(0, 0, 0, 0.06);
+  z-index: 999;
 }
 
 .btn-cancel {

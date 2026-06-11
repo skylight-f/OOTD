@@ -150,7 +150,8 @@
 import { createComponent } from '@mpxjs/core'
 import { getWeatherInfo, type WeatherInfo } from '@/utils/weather'
 import { getCurrentLocation } from '@/utils/location'
-import { getAllClothes, getAllOutfits, type ClothingItem, type OutfitItem } from '@/utils/storage'
+import { fetchAllClothes, fetchAllOutfits } from '@/api/request'
+import type { ClothingItem, OutfitItem } from '@/utils/storage'
 
 type HomeTabEvent = {
   currentTarget: {
@@ -341,12 +342,14 @@ function toneToClass(tone: string): string {
 }
 
 /** 从穿搭记录和有穿着记录的衣物生成瀑布流卡片 */
-function buildWaterfallCards(): WaterfallCard[][] {
+async function buildWaterfallCards(): Promise<WaterfallCard[][]> {
   const cards: WaterfallCard[] = []
-  const clothes = getAllClothes()
+  const clothesRes = await fetchAllClothes()
+  const clothes = clothesRes.data
 
   // ① 搭配记录 → 卡片
-  const outfits = getAllOutfits()
+  const outfitsRes = await fetchAllOutfits()
+  const outfits = outfitsRes.data
   outfits.forEach((o: OutfitItem) => {
     const previewImage = clothes.find((item) => o.clothingIds.includes(item.id) && item.imagePath)?.imagePath || ''
     cards.push({
@@ -382,11 +385,11 @@ function buildWaterfallCards(): WaterfallCard[][] {
   // ③ 按创建时间倒序排列
   cards.sort((a, b) => {
     const aItem = a.type === 'outfit'
-      ? getAllOutfits().find((o) => o.id === a.id)
-      : getAllClothes().find((c) => c.id === a.id)
+      ? outfits.find((o) => o.id === a.id)
+      : clothes.find((c) => c.id === a.id)
     const bItem = b.type === 'outfit'
-      ? getAllOutfits().find((o) => o.id === b.id)
-      : getAllClothes().find((c) => c.id === b.id)
+      ? outfits.find((o) => o.id === b.id)
+      : clothes.find((c) => c.id === b.id)
     const aTime = aItem ? (aItem as any).createdAt || 0 : 0
     const bTime = bItem ? (bItem as any).createdAt || 0 : 0
     return bTime - aTime
@@ -444,10 +447,20 @@ createComponent({
     }
 
     // 加载真实瀑布流数据
-    this.setData({ waterfallColumns: buildWaterfallCards() })
+    buildWaterfallCards().then((columns) => {
+      this.setData({ waterfallColumns: columns })
+    })
 
     // 加载天气数据
     this.loadWeather()
+  },
+
+  pageLifetimes: {
+    show() {
+      buildWaterfallCards().then((columns) => {
+        this.setData({ waterfallColumns: columns })
+      })
+    }
   },
 
   methods: {
@@ -456,8 +469,8 @@ createComponent({
     },
 
     onTapNavCalendar() {
-      wx.switchTab({
-        url: '/pages/outfitPage/index'
+      wx.navigateTo({
+        url: '/pages/calendarPage/index'
       })
     },
 
@@ -474,7 +487,8 @@ createComponent({
 
         // 生成基于天气的推荐数据，并与衣橱匹配
         const rawRec = buildRecommendation(weatherData)
-        const clothes = getAllClothes()
+        const clothesRes = await fetchAllClothes()
+        const clothes = clothesRes.data
         const recommendation = {
           ...rawRec,
           items: matchWardrobe(rawRec.items, clothes)
@@ -567,7 +581,7 @@ createComponent({
 
     /** 点击空衣橱引导 → 跳转添加衣物 */
     goAddClothes() {
-      wx.switchTab({ url: '/pages/addClothesPage/index' })
+      wx.navigateTo({ url: '/pages/addClothesPage/index' })
     },
 
     /** 点击瀑布流卡片 → 跳转搭配/衣物详情 */

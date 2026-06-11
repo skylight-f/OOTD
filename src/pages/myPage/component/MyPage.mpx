@@ -19,7 +19,7 @@
 
     <view class="section-card highlight-card">
       <text class="section-title">本周风格画像</text>
-      <text class="highlight-title">轻通勤 · 柔和色调 · 低复杂度搭配</text>
+      <text class="highlight-title">{{styleTitle}}</text>
       <view class="chip-group">
         <text wx:for="{{styleTags}}" wx:key="*this" class="chip chip--accent">{{item}}</text>
       </view>
@@ -42,7 +42,7 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getClothingStats, getAllOutfits, getAllClothes } from '@/utils/storage'
+import { getClothingStats, getAllOutfits, getAllClothes, exportAllData, importData } from '@/utils/storage'
 
 /** 计算连续打卡天数 */
 function calcStreak(clothes: ReturnType<typeof getAllClothes>): number {
@@ -72,8 +72,8 @@ function calcStreak(clothes: ReturnType<typeof getAllClothes>): number {
   return streak
 }
 
-/** 分析风格标签 */
-function buildStyleTags(clothes: ReturnType<typeof getAllClothes>): string[] {
+/** 分析风格标签和标题 */
+function buildStyleProfile(clothes: ReturnType<typeof getAllClothes>): { title: string; tags: string[] } {
   const tags: string[] = []
   const colors = new Set<string>()
   const categories = new Set<string>()
@@ -85,7 +85,6 @@ function buildStyleTags(clothes: ReturnType<typeof getAllClothes>): string[] {
     c.scene.split(' / ').map((s) => s.trim()).forEach((s) => scenes.add(s))
   })
 
-  // 根据实际数据生成标签
   const colorStr = Array.from(colors).join('、')
   if (colorStr) tags.push(colorStr)
   if (scenes.has('通勤')) tags.push('通勤风格')
@@ -93,7 +92,28 @@ function buildStyleTags(clothes: ReturnType<typeof getAllClothes>): string[] {
   if (clothes.length >= 20) tags.push('衣橱丰盈')
   if (clothes.length >= 5) tags.push('基础款搭配')
 
-  return tags.length > 0 ? tags.slice(0, 5) : ['基础款穿搭', '简约风格']
+  const finalTags = tags.length > 0 ? tags.slice(0, 5) : ['基础款穿搭', '简约风格']
+
+  // 生成风格标题
+  const parts: string[] = []
+  if (scenes.has('通勤')) parts.push('轻通勤')
+  if (scenes.has('周末') || scenes.has('休闲')) parts.push('休闲')
+  if (scenes.has('约会')) parts.push('约会')
+
+  const dominantColors = Array.from(colors).slice(0, 2)
+  if (dominantColors.length > 0) {
+    parts.push(dominantColors.join('色调'))
+  }
+
+  if (categories.size <= 3) {
+    parts.push('低复杂度搭配')
+  } else if (categories.size >= 5) {
+    parts.push('多品类混搭')
+  }
+
+  const title = parts.length > 0 ? parts.join(' · ') : '简约风格 · 基础搭配'
+
+  return { title, tags: finalTags }
 }
 
 createComponent({
@@ -104,10 +124,12 @@ createComponent({
       { label: '收藏衣物', value: '0' },
       { label: '连续打卡', value: '0' }
     ],
+    styleTitle: '加载中...' as string,
     styleTags: ['加载中...'] as string[],
     menus: [
+      { title: '穿搭日历', desc: '查看每日穿搭记录和月度统计' },
       { title: '衣橱管理', desc: '分类整理、批量编辑、清理闲置单品' },
-      { title: '天气提醒', desc: '降温、下雨、换季时收到穿搭建议' },
+      { title: '数据管理', desc: '导出备份、导入恢复衣物和搭配数据' },
       { title: '账号设置', desc: '同步数据、隐私偏好和小程序设置' }
     ]
   },
@@ -116,17 +138,28 @@ createComponent({
     this.refreshData()
   },
 
+  pageLifetimes: {
+    show() {
+      this.refreshData()
+    }
+  },
+
   methods: {
     onTapMenu(e: { currentTarget: { dataset: { index: number } } }) {
       const index = Number(e.currentTarget.dataset.index)
 
       if (index === 0) {
-        wx.switchTab({ url: '/pages/closetPage/index' })
+        wx.navigateTo({ url: '/pages/calendarPage/index' })
         return
       }
 
       if (index === 1) {
-        wx.switchTab({ url: '/pages/homePage/index' })
+        wx.switchTab({ url: '/pages/closetPage/index' })
+        return
+      }
+
+      if (index === 2) {
+        this.onTapDataManage()
         return
       }
 
@@ -135,6 +168,59 @@ createComponent({
         content: '当前版本使用本地存储，账号同步与隐私偏好设置会在后续版本开放。',
         showCancel: false,
         confirmText: '知道了'
+      })
+    },
+
+    /** 数据管理：导出/导入 */
+    onTapDataManage() {
+      wx.showActionSheet({
+        itemList: ['导出数据到剪贴板', '从剪贴板导入数据'],
+        success: (res) => {
+          if (res.tapIndex === 0) {
+            this.exportData()
+          } else if (res.tapIndex === 1) {
+            this.importData()
+          }
+        }
+      })
+    },
+
+    /** 导出数据 */
+    exportData() {
+      const data = exportAllData()
+      wx.setClipboardData({
+        data,
+        success: () => {
+          wx.showToast({ title: '已复制到剪贴板', icon: 'success' })
+        }
+      })
+    },
+
+    /** 导入数据 */
+    importData() {
+      wx.getClipboardData({
+        success: (res) => {
+          const data = res.data
+          if (!data) {
+            wx.showToast({ title: '剪贴板为空', icon: 'none' })
+            return
+          }
+          wx.showModal({
+            title: '导入数据',
+            content: '导入会合并现有数据，重复的衣物将被跳过。确定继续？',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                const result = importData(data, 'merge')
+                if (result.success) {
+                  this.refreshData()
+                  wx.showToast({ title: '导入成功', icon: 'success' })
+                } else {
+                  wx.showToast({ title: result.message, icon: 'none' })
+                }
+              }
+            }
+          })
+        }
       })
     },
 
@@ -150,7 +236,7 @@ createComponent({
       const favoriteCount = clothes.filter((c) => c.favorite).length
 
       const streak = calcStreak(clothes)
-      const tags = buildStyleTags(clothes)
+      const profile = buildStyleProfile(clothes)
 
       this.setData({
         stats: [
@@ -159,7 +245,8 @@ createComponent({
           { label: '收藏衣物', value: String(favoriteCount) },
           { label: '连续打卡', value: `${streak} 天` }
         ],
-        styleTags: tags
+        styleTitle: profile.title,
+        styleTags: profile.tags
       })
     }
   }

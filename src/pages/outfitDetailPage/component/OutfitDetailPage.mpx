@@ -1,91 +1,127 @@
 <template>
   <view class="page detail-page">
-    <!-- 空状态 -->
     <view wx:if="{{!outfit}}" class="empty">
       <text class="empty-text">搭配不存在</text>
     </view>
 
     <view wx:else class="detail-content">
-      <!-- 搭配信息头部 -->
-      <view class="hero-card">
-        <view class="hero-tone hero-tone--{{outfit.tone}}"></view>
-        <view class="hero-info">
-          <text class="hero-scene">{{outfit.scene}}</text>
-          <text class="hero-name">{{outfit.name}}</text>
-          <text wx:if="{{outfit.description}}" class="hero-desc">{{outfit.description}}</text>
-        </view>
-      </view>
-
-      <!-- 包含的单品 -->
-      <view class="section-card">
-        <view class="section-head">
-          <text class="section-title">包含单品（{{clothesList.length}} 件）</text>
+      <!-- 查看模式 -->
+      <block wx:if="{{!editing}}">
+        <view class="hero-card">
+          <view class="hero-tone hero-tone--{{outfit.tone}}"></view>
+          <view class="hero-info">
+            <text class="hero-scene">{{outfit.scene}}</text>
+            <text class="hero-name">{{outfit.name}}</text>
+            <text wx:if="{{outfit.description}}" class="hero-desc">{{outfit.description}}</text>
+          </view>
         </view>
 
-        <view wx:if="{{clothesList.length === 0}}" class="hint">
-          <text class="hint-text">该搭配中的衣物已被删除</text>
-        </view>
-
-        <view wx:else class="clothes-row">
-          <view
-            wx:for="{{clothesList}}"
-            wx:key="id"
-            class="cloth-card"
-            data-id="{{item.id}}"
-            bindtap="goClothingDetail"
-          >
-            <view class="cloth-cover cloth-cover--{{item.tone}}">
-              <image wx:if="{{item.imagePath}}" class="cloth-image" src="{{item.imagePath}}" mode="aspectFill" />
-              <text wx:else class="cloth-icon">{{item.icon}}</text>
+        <view class="section-card">
+          <view class="section-head">
+            <text class="section-title">包含单品（{{clothesList.length}} 件）</text>
+          </view>
+          <view wx:if="{{clothesList.length === 0}}" class="hint">
+            <text class="hint-text">该搭配中的衣物已被删除</text>
+          </view>
+          <view wx:else class="clothes-row">
+            <view
+              wx:for="{{clothesList}}"
+              wx:key="id"
+              class="cloth-card"
+              data-id="{{item.id}}"
+              bindtap="goClothingDetail"
+            >
+              <view class="cloth-cover cloth-cover--{{item.tone}}">
+                <image wx:if="{{item.imagePath}}" class="cloth-image" src="{{item.imagePath}}" mode="aspectFill" />
+                <text wx:else class="cloth-icon">{{item.icon}}</text>
+              </view>
+              <text class="cloth-name">{{item.name}}</text>
+              <text class="cloth-meta">{{item.category}} · {{item.color}}</text>
             </view>
-            <text class="cloth-name">{{item.name}}</text>
-            <text class="cloth-meta">{{item.category}} · {{item.color}}</text>
           </view>
         </view>
-      </view>
 
-      <!-- 穿着统计 -->
-      <view class="section-card stats-card">
-        <text class="section-title">穿着统计</text>
-        <view class="detail-stats">
-          <view class="detail-stat">
-            <text class="detail-stat-value">{{outfit.wearCount}}</text>
-            <text class="detail-stat-label">穿着次数</text>
-          </view>
-          <view class="detail-stat">
-            <text class="detail-stat-value">{{lastWornText}}</text>
-            <text class="detail-stat-label">最后一次穿着</text>
-          </view>
-          <view class="detail-stat">
-            <text class="detail-stat-value">{{createdText}}</text>
-            <text class="detail-stat-label">创建时间</text>
+        <view class="section-card stats-card">
+          <text class="section-title">穿着统计</text>
+          <view class="detail-stats">
+            <view class="detail-stat">
+              <text class="detail-stat-value">{{outfit.wearCount}}</text>
+              <text class="detail-stat-label">穿着次数</text>
+            </view>
+            <view class="detail-stat">
+              <text class="detail-stat-value">{{lastWornText}}</text>
+              <text class="detail-stat-label">最后一次穿着</text>
+            </view>
+            <view class="detail-stat">
+              <text class="detail-stat-value">{{createdText}}</text>
+              <text class="detail-stat-label">创建时间</text>
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 操作按钮 -->
-      <view class="action-row">
-        <view class="action-btn action-btn--wear" bindtap="handleWear" hover-class="action-btn--pressed">
-          <text class="action-text">记录穿着</text>
+        <view class="action-row">
+          <view class="action-btn action-btn--wear" bindtap="handleWear" hover-class="action-btn--pressed">
+            <text class="action-text">记录穿着</text>
+          </view>
+          <view class="action-btn action-btn--edit" bindtap="enterEdit" hover-class="action-btn--pressed">
+            <text class="action-text">编辑</text>
+          </view>
+          <view class="action-btn action-btn--delete" bindtap="showDeleteConfirm" hover-class="action-btn--pressed">
+            <text class="action-text">删除</text>
+          </view>
         </view>
-        <view class="action-btn action-btn--delete" bindtap="showDeleteConfirm" hover-class="action-btn--pressed">
-          <text class="action-text">删除搭配</text>
+      </block>
+
+      <!-- 编辑模式 -->
+      <block wx:else>
+        <view class="section-card">
+          <text class="section-title">编辑搭配</text>
+
+          <view class="form-field">
+            <text class="field-label">搭配名称</text>
+            <input class="field-input" value="{{editForm.name}}" data-field="name" bindinput="handleEditInput" />
+          </view>
+
+          <view class="form-field">
+            <text class="field-label">适合场景</text>
+            <view class="scene-tags">
+              <text
+                wx:for="{{sceneOptions}}"
+                wx:key="*this"
+                class="scene-tag {{editScene === item ? 'scene-tag--active' : ''}}"
+                data-scene="{{item}}"
+                bindtap="onEditScene"
+              >{{item}}</text>
+            </view>
+          </view>
+
+          <view class="form-field">
+            <text class="field-label">描述</text>
+            <textarea class="field-textarea" value="{{editForm.description}}" data-field="description" bindinput="handleEditInput" maxlength="200" />
+          </view>
+
+          <view class="edit-actions">
+            <view class="edit-btn edit-btn--cancel" bindtap="cancelEdit">
+              <text class="edit-btn-text">取消</text>
+            </view>
+            <view class="edit-btn edit-btn--save" bindtap="saveEdit">
+              <text class="edit-btn-text">保存</text>
+            </view>
+          </view>
         </view>
-      </view>
+      </block>
     </view>
   </view>
 </template>
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllOutfits, deleteOutfit, getClothingById, inferTone, categoryToIcon, recordOutfitWear, type OutfitItem, type ClothingItem } from '@/utils/storage'
+import { getAllOutfits, updateOutfit, deleteOutfit, getClothingById, inferTone, categoryToIcon, recordOutfitWear, SCENE_OPTIONS, type OutfitItem, type ClothingItem } from '@/utils/storage'
 
 function formatDate(timestamp: number): string {
   if (!timestamp) return '暂无记录'
   const d = new Date(timestamp)
-  const month = d.getMonth() + 1
-  const day = d.getDate()
-  return `${month}月${day}日`
+  return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 interface DisplayCloth {
@@ -99,6 +135,19 @@ function toDisplay(item: ClothingItem): DisplayCloth {
   }
 }
 
+function loadOutfitData(id: string): { outfit: OutfitItem | null; clothesList: DisplayCloth[]; lastWornText: string; createdText: string } {
+  const outfits = getAllOutfits()
+  const outfit = outfits.find((o) => o.id === id)
+  if (!outfit) return { outfit: null, clothesList: [], lastWornText: '', createdText: '' }
+
+  const list = outfit.clothingIds
+    .map((cid) => getClothingById(cid))
+    .filter(Boolean)
+    .map((c) => toDisplay(c!))
+
+  return { outfit, clothesList: list, lastWornText: formatDate(outfit.lastWornAt), createdText: formatDate(outfit.createdAt) }
+}
+
 createComponent({
   properties: {
     outfitId: String
@@ -108,32 +157,23 @@ createComponent({
     outfit: null as OutfitItem | null,
     clothesList: [] as DisplayCloth[],
     lastWornText: '暂无记录',
-    createdText: ''
+    createdText: '',
+    editing: false,
+    editForm: { name: '', description: '' },
+    editScene: '',
+    sceneOptions: SCENE_OPTIONS
   },
 
   observers: {
     outfitId(id: string) {
       if (!id) return
-
-      const outfits = getAllOutfits()
-      const outfit = outfits.find((o) => o.id === id)
-      if (!outfit) {
+      const data = loadOutfitData(id)
+      if (!data.outfit) {
         wx.showToast({ title: '搭配不存在', icon: 'none' })
         setTimeout(() => wx.navigateBack(), 500)
         return
       }
-
-      const list = outfit.clothingIds
-        .map((cid) => getClothingById(cid))
-        .filter(Boolean)
-        .map((c) => toDisplay(c!))
-
-      this.setData({
-        outfit,
-        clothesList: list,
-        lastWornText: formatDate(outfit.lastWornAt),
-        createdText: formatDate(outfit.createdAt)
-      })
+      this.setData(data)
     }
   },
 
@@ -145,20 +185,54 @@ createComponent({
     handleWear() {
       const outfit = this.data.outfit
       if (!outfit) return
-
       const success = recordOutfitWear(outfit.id)
       if (!success) {
         wx.showToast({ title: '记录失败', icon: 'none' })
         return
       }
-
-      const updatedOutfit = getAllOutfits().find((item) => item.id === outfit.id) || outfit
-      this.setData({
-        outfit: updatedOutfit,
-        lastWornText: formatDate(updatedOutfit.lastWornAt),
-        createdText: formatDate(updatedOutfit.createdAt)
-      })
+      const data = loadOutfitData(outfit.id)
+      this.setData(data)
       wx.showToast({ title: '已记录穿着', icon: 'success' })
+    },
+
+    enterEdit() {
+      const outfit = this.data.outfit
+      if (!outfit) return
+      this.setData({
+        editing: true,
+        editForm: { name: outfit.name, description: outfit.description },
+        editScene: outfit.scene
+      })
+    },
+
+    cancelEdit() {
+      this.setData({ editing: false })
+    },
+
+    handleEditInput(e: { detail: { value: string }; currentTarget: { dataset: { field: string } } }) {
+      this.setData({ [`editForm.${e.currentTarget.dataset.field}`]: e.detail.value })
+    },
+
+    onEditScene(e: { currentTarget: { dataset: { scene: string } } }) {
+      this.setData({ editScene: e.currentTarget.dataset.scene })
+    },
+
+    saveEdit() {
+      const outfit = this.data.outfit
+      if (!outfit) return
+      const { editForm, editScene } = this.data
+      if (!editForm.name.trim()) {
+        wx.showToast({ title: '请输入搭配名称', icon: 'none' })
+        return
+      }
+      updateOutfit(outfit.id, {
+        name: editForm.name.trim(),
+        scene: editScene,
+        description: editForm.description.trim()
+      })
+      const data = loadOutfitData(outfit.id)
+      this.setData({ ...data, editing: false })
+      wx.showToast({ title: '已保存', icon: 'success' })
     },
 
     showDeleteConfirm() {
@@ -208,11 +282,7 @@ createComponent({
   box-shadow: 0 10rpx 28rpx rgba(0,0,0,0.05);
 }
 
-.hero-tone {
-  width: 16rpx;
-  flex-shrink: 0;
-}
-
+.hero-tone { width: 16rpx; flex-shrink: 0; }
 .hero-tone--oat { background: #e5d7c3; }
 .hero-tone--blue { background: #769fc4; }
 .hero-tone--cream { background: #d4b896; }
@@ -224,10 +294,7 @@ createComponent({
 .hero-tone--gray { background: #b5b5b5; }
 .hero-tone--white { background: #e0e0e0; }
 
-.hero-info {
-  flex: 1;
-  padding: 32rpx;
-}
+.hero-info { flex: 1; padding: 32rpx; }
 
 .hero-scene {
   display: inline-block;
@@ -239,21 +306,8 @@ createComponent({
   font-weight: 600;
 }
 
-.hero-name {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 38rpx;
-  font-weight: 700;
-  color: #222222;
-}
-
-.hero-desc {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: #696969;
-}
+.hero-name { display: block; margin-top: 16rpx; font-size: 38rpx; font-weight: 700; color: #222222; }
+.hero-desc { display: block; margin-top: 12rpx; font-size: 24rpx; line-height: 1.6; color: #696969; }
 
 .section-card {
   margin-top: 20rpx;
@@ -263,55 +317,15 @@ createComponent({
   box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.04);
 }
 
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.section-head { display: flex; justify-content: space-between; align-items: center; }
+.section-title { font-size: 28rpx; font-weight: 700; color: #222222; }
 
-.section-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #222222;
-}
+.hint { margin-top: 24rpx; padding: 24rpx; text-align: center; background: #f8f8f8; border-radius: 12rpx; }
+.hint-text { font-size: 24rpx; color: #999999; }
 
-.hint {
-  margin-top: 24rpx;
-  padding: 24rpx;
-  text-align: center;
-  background: #f8f8f8;
-  border-radius: 12rpx;
-}
-
-.hint-text {
-  font-size: 24rpx;
-  color: #999999;
-}
-
-.clothes-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-top: 20rpx;
-}
-
-.cloth-card {
-  width: calc(25% - 12rpx);
-  padding: 12rpx;
-  border-radius: 12rpx;
-  background: #fafafa;
-  box-sizing: border-box;
-}
-
-.cloth-cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 120rpx;
-  border-radius: 10rpx;
-  overflow: hidden;
-}
-
+.clothes-row { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.cloth-card { width: calc(25% - 12rpx); padding: 12rpx; border-radius: 12rpx; background: #fafafa; box-sizing: border-box; }
+.cloth-cover { display: flex; align-items: center; justify-content: center; height: 120rpx; border-radius: 10rpx; overflow: hidden; }
 .cloth-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
 .cloth-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
 .cloth-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
@@ -322,95 +336,42 @@ createComponent({
 .cloth-cover--pink { background: linear-gradient(180deg, #e0b8c4, #f8edf2); }
 .cloth-cover--gray { background: linear-gradient(180deg, #b5b5b5, #e8e8e8); }
 .cloth-cover--white { background: linear-gradient(180deg, #e8e8e8, #f8f8f8); }
-
 .cloth-image { width: 100%; height: 100%; }
+.cloth-icon { font-size: 22rpx; font-weight: 700; color: rgba(34,28,24,0.6); }
+.cloth-name { display: block; margin-top: 8rpx; font-size: 22rpx; color: #333333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cloth-meta { display: block; margin-top: 4rpx; font-size: 20rpx; color: #999999; }
 
-.cloth-icon {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: rgba(34,28,24,0.6);
-}
-
-.cloth-name {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #333333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cloth-meta {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 20rpx;
-  color: #999999;
-}
-
-.action-row {
-  display: flex;
-  margin-top: 28rpx;
-  gap: 16rpx;
-}
-
-.action-btn {
-  flex: 1;
-  padding: 22rpx;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+.action-row { display: flex; margin-top: 28rpx; gap: 16rpx; }
+.action-btn { flex: 1; padding: 22rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; }
 .action-btn--pressed { opacity: 0.8; }
-
 .action-btn--wear { background: #e8f5e9; }
+.action-btn--edit { background: #fff3e0; }
 .action-btn--delete { background: #fce4ec; }
+.action-text { font-size: 26rpx; font-weight: 600; color: #333333; }
 
-.action-text {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #333333;
-}
+.stats-card { margin-top: 24rpx; }
+.stats-card .section-title { margin-bottom: 20rpx; }
+.detail-stats { display: flex; gap: 16rpx; margin-top: 20rpx; }
+.detail-stat { flex: 1; padding: 16rpx; border-radius: 12rpx; background: #fafafa; text-align: center; }
+.detail-stat-value { display: block; font-size: 32rpx; font-weight: 700; color: #ff2442; line-height: 1.2; }
+.detail-stat-label { display: block; margin-top: 6rpx; font-size: 22rpx; color: #999999; }
 
-/* 穿着统计卡片 */
-.stats-card {
-  margin-top: 24rpx;
-}
+.form-field { margin-top: 24rpx; }
+.field-label { display: block; font-size: 24rpx; font-weight: 600; color: #555555; margin-bottom: 10rpx; }
+.field-input { width: 100%; height: 80rpx; padding: 0 20rpx; border-radius: 8rpx; background: #f7f7f7; font-size: 28rpx; color: #333333; box-sizing: border-box; }
+.field-textarea { width: 100%; height: 140rpx; padding: 18rpx 20rpx; border-radius: 8rpx; background: #f7f7f7; font-size: 28rpx; color: #333333; box-sizing: border-box; }
 
-.stats-card .section-title {
-  margin-bottom: 20rpx;
-}
+.scene-tags { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.scene-tag { padding: 12rpx 24rpx; border-radius: 999rpx; background: #f5f5f5; color: #666666; font-size: 24rpx; }
+.scene-tag--active { background: #ffe8ec; color: #ff2442; font-weight: 600; }
 
-.detail-stats {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 20rpx;
-}
-
-.detail-stat {
-  flex: 1;
-  padding: 16rpx;
-  border-radius: 12rpx;
-  background: #fafafa;
-  text-align: center;
-}
-
-.detail-stat-value {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #ff2442;
-  line-height: 1.2;
-}
-
-.detail-stat-label {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: #999999;
-}
+.edit-actions { display: flex; margin-top: 32rpx; gap: 20rpx; }
+.edit-btn { flex: 1; padding: 22rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; }
+.edit-btn--cancel { background: #f5f5f5; }
+.edit-btn--save { background: #ff2442; }
+.edit-btn-text { font-size: 28rpx; font-weight: 600; }
+.edit-btn--cancel .edit-btn-text { color: #666666; }
+.edit-btn--save .edit-btn-text { color: #ffffff; }
 </style>
 
 <script type="application/json">

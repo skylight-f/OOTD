@@ -1,0 +1,627 @@
+<template>
+  <view class="page calendar-page">
+    <!-- 月份切换 -->
+    <view class="month-header">
+      <view class="month-nav" bindtap="prevMonth">
+        <text class="nav-arrow">‹</text>
+      </view>
+      <text class="month-title">{{year}}年{{month}}月</text>
+      <view class="month-nav" bindtap="nextMonth">
+        <text class="nav-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 星期标题 -->
+    <view class="week-header">
+      <text wx:for="{{weekDays}}" wx:key="*this" class="week-day">{{item}}</text>
+    </view>
+
+    <!-- 日历网格 -->
+    <view class="calendar-grid">
+      <view
+        wx:for="{{calendarDays}}"
+        wx:key="date"
+        class="calendar-cell {{item.isCurrentMonth ? '' : 'calendar-cell--other'}} {{item.isToday ? 'calendar-cell--today' : ''}} {{item.hasRecord ? 'calendar-cell--active' : ''}}"
+        data-date="{{item.date}}"
+        bindtap="onTapDay"
+      >
+        <text class="cell-day">{{item.day}}</text>
+        <view wx:if="{{item.hasRecord}}" class="cell-dot"></view>
+        <view wx:if="{{item.recordCount > 1}}" class="cell-badge">
+          <text class="cell-badge-text">{{item.recordCount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 选中日期的记录 -->
+    <view class="section-card" wx:if="{{selectedDate}}">
+      <view class="section-head">
+        <text class="section-title">{{selectedDateText}}</text>
+        <text class="section-subtitle">{{dayRecords.length}} 条记录</text>
+      </view>
+
+      <view wx:if="{{dayRecords.length === 0}}" class="empty-hint">
+        <text class="empty-hint-text">当天没有穿搭记录</text>
+      </view>
+
+      <view wx:else class="record-list">
+        <view
+          wx:for="{{dayRecords}}"
+          wx:key="id"
+          class="record-item"
+          data-id="{{item.id}}"
+          data-type="{{item.type}}"
+          bindtap="goDetail"
+        >
+          <view class="record-cover record-cover--{{item.tone}}">
+            <image wx:if="{{item.imagePath}}" class="record-image" src="{{item.imagePath}}" mode="aspectFill" />
+            <text wx:else class="record-icon">{{item.icon}}</text>
+          </view>
+          <view class="record-info">
+            <text class="record-name">{{item.name}}</text>
+            <text class="record-meta">{{item.scene}} · {{item.type === 'outfit' ? '搭配' : '衣物'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 月度统计 -->
+    <view class="section-card">
+      <text class="section-title">本月统计</text>
+      <view class="month-stats">
+        <view class="month-stat">
+          <text class="month-stat-value">{{monthStats.totalDays}}</text>
+          <text class="month-stat-label">穿搭天数</text>
+        </view>
+        <view class="month-stat">
+          <text class="month-stat-value">{{monthStats.totalRecords}}</text>
+          <text class="month-stat-label">穿搭次数</text>
+        </view>
+        <view class="month-stat">
+          <text class="month-stat-value">{{monthStats.outfitCount}}</text>
+          <text class="month-stat-label">搭配记录</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import { createComponent } from '@mpxjs/core'
+import { getAllClothes, getAllOutfits, type ClothingItem, type OutfitItem } from '@/utils/storage'
+
+interface CalendarDay {
+  date: string
+  day: number
+  isCurrentMonth: boolean
+  isToday: boolean
+  hasRecord: boolean
+  recordCount: number
+}
+
+interface DayRecord {
+  id: string
+  name: string
+  scene: string
+  tone: string
+  icon: string
+  imagePath: string
+  type: 'clothing' | 'outfit'
+  timestamp: number
+}
+
+function formatDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function getMonthDays(year: number, month: number): CalendarDay[] {
+  const today = new Date()
+  const todayKey = formatDateKey(today)
+
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0)
+  const startWeekday = firstDay.getDay()
+
+  const days: CalendarDay[] = []
+
+  // 上月补位
+  const prevMonthLast = new Date(year, month - 1, 0)
+  for (let i = startWeekday - 1; i >= 0; i--) {
+    const d = prevMonthLast.getDate() - i
+    const date = new Date(year, month - 2, d)
+    days.push({
+      date: formatDateKey(date),
+      day: d,
+      isCurrentMonth: false,
+      isToday: false,
+      hasRecord: false,
+      recordCount: 0
+    })
+  }
+
+  // 本月
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const date = new Date(year, month - 1, d)
+    const dateKey = formatDateKey(date)
+    days.push({
+      date: dateKey,
+      day: d,
+      isCurrentMonth: true,
+      isToday: dateKey === todayKey,
+      hasRecord: false,
+      recordCount: 0
+    })
+  }
+
+  // 下月补位
+  const remaining = 42 - days.length
+  for (let d = 1; d <= remaining; d++) {
+    const date = new Date(year, month, d)
+    days.push({
+      date: formatDateKey(date),
+      day: d,
+      isCurrentMonth: false,
+      isToday: false,
+      hasRecord: false,
+      recordCount: 0
+    })
+  }
+
+  return days
+}
+
+function buildRecordMap(clothes: ClothingItem[], outfits: OutfitItem[]): Record<string, number> {
+  const map: Record<string, number> = {}
+
+  clothes.forEach((c) => {
+    if (c.lastWornAt > 0) {
+      const key = formatDateKey(new Date(c.lastWornAt))
+      map[key] = (map[key] || 0) + 1
+    }
+  })
+
+  outfits.forEach((o) => {
+    if (o.lastWornAt > 0) {
+      const key = formatDateKey(new Date(o.lastWornAt))
+      map[key] = (map[key] || 0) + 1
+    }
+  })
+
+  return map
+}
+
+function getDayRecords(
+  dateStr: string,
+  clothes: ClothingItem[],
+  outfits: OutfitItem[]
+): DayRecord[] {
+  const records: DayRecord[] = []
+  const targetDate = new Date(dateStr)
+
+  clothes.forEach((c) => {
+    if (c.lastWornAt > 0) {
+      const wornDate = new Date(c.lastWornAt)
+      if (formatDateKey(wornDate) === dateStr) {
+        records.push({
+          id: c.id,
+          name: c.name,
+          scene: c.scene,
+          tone: c.tone || 'oat',
+          icon: categoryToIcon(c.category),
+          imagePath: c.imagePath,
+          type: 'clothing',
+          timestamp: c.lastWornAt
+        })
+      }
+    }
+  })
+
+  outfits.forEach((o) => {
+    if (o.lastWornAt > 0) {
+      const wornDate = new Date(o.lastWornAt)
+      if (formatDateKey(wornDate) === dateStr) {
+        records.push({
+          id: o.id,
+          name: o.name,
+          scene: o.scene,
+          tone: o.tone || 'oat',
+          icon: 'OUTFIT',
+          imagePath: '',
+          type: 'outfit',
+          timestamp: o.lastWornAt
+        })
+      }
+    }
+  })
+
+  return records.sort((a, b) => b.timestamp - a.timestamp)
+}
+
+function categoryToIcon(category: string): string {
+  const map: Record<string, string> = {
+    '上装': 'TOP', '下装': 'BOTTOM', '外套': 'COAT',
+    '鞋履': 'SHOE', '配饰': 'ACC', '包袋': 'BAG',
+    '连衣裙': 'DRESS', '半裙': 'SKIRT'
+  }
+  return map[category] || 'ITEM'
+}
+
+createComponent({
+  data: {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    weekDays: ['日', '一', '二', '三', '四', '五', '六'],
+    calendarDays: [] as CalendarDay[],
+    selectedDate: '' as string,
+    selectedDateText: '',
+    dayRecords: [] as DayRecord[],
+    monthStats: {
+      totalDays: 0,
+      totalRecords: 0,
+      outfitCount: 0
+    },
+    clothes: [] as ClothingItem[],
+    outfits: [] as OutfitItem[]
+  },
+
+  attached() {
+    this.loadData()
+  },
+
+  methods: {
+    loadData() {
+      const clothes = getAllClothes()
+      const outfits = getAllOutfits()
+      this.setData({ clothes, outfits })
+      this.renderCalendar()
+    },
+
+    renderCalendar() {
+      const { year, month, clothes, outfits } = this.data
+      const recordMap = buildRecordMap(clothes, outfits)
+      const days = getMonthDays(year, month)
+
+      // 标记有记录的日期
+      days.forEach((d) => {
+        const count = recordMap[d.date] || 0
+        d.hasRecord = count > 0
+        d.recordCount = count
+      })
+
+      // 计算月度统计
+      let totalDays = 0
+      let totalRecords = 0
+      days.forEach((d) => {
+        if (d.isCurrentMonth && d.hasRecord) {
+          totalDays++
+          totalRecords += d.recordCount
+        }
+      })
+
+      const outfitCount = outfits.filter((o) => {
+        if (!o.lastWornAt) return false
+        const d = new Date(o.lastWornAt)
+        return d.getFullYear() === year && d.getMonth() === month - 1
+      }).length
+
+      this.setData({
+        calendarDays: days,
+        monthStats: { totalDays, totalRecords, outfitCount }
+      })
+
+      // 如果有选中日期，刷新记录
+      if (this.data.selectedDate) {
+        this.loadDayRecords(this.data.selectedDate)
+      }
+    },
+
+    loadDayRecords(dateStr: string) {
+      const { clothes, outfits } = this.data
+      const records = getDayRecords(dateStr, clothes, outfits)
+      const d = new Date(dateStr)
+      const text = `${d.getMonth() + 1}月${d.getDate()}日`
+
+      this.setData({
+        selectedDate: dateStr,
+        selectedDateText: text,
+        dayRecords: records
+      })
+    },
+
+    prevMonth() {
+      let { year, month } = this.data
+      month--
+      if (month < 1) {
+        month = 12
+        year--
+      }
+      this.setData({ year, month, selectedDate: '', dayRecords: [] })
+      this.renderCalendar()
+    },
+
+    nextMonth() {
+      let { year, month } = this.data
+      month++
+      if (month > 12) {
+        month = 1
+        year++
+      }
+      this.setData({ year, month, selectedDate: '', dayRecords: [] })
+      this.renderCalendar()
+    },
+
+    onTapDay(e: { currentTarget: { dataset: { date: string } } }) {
+      const date = e.currentTarget.dataset.date
+      this.loadDayRecords(date)
+    },
+
+    goDetail(e: { currentTarget: { dataset: { id: string; type: string } } }) {
+      const { id, type } = e.currentTarget.dataset
+      if (type === 'outfit') {
+        wx.navigateTo({ url: `/pages/outfitDetailPage/index?id=${id}` })
+      } else {
+        wx.navigateTo({ url: `/pages/clothingDetailPage/index?id=${id}` })
+      }
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 60rpx;
+  background: #f6f6f6;
+  box-sizing: border-box;
+}
+
+.month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+}
+
+.month-nav {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.nav-arrow {
+  font-size: 36rpx;
+  color: #333333;
+}
+
+.month-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.week-header {
+  display: flex;
+  margin-top: 16rpx;
+}
+
+.week-day {
+  flex: 1;
+  text-align: center;
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.calendar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 16rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.calendar-cell {
+  width: calc(100% / 7);
+  height: 96rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.calendar-cell--other {
+  opacity: 0.3;
+}
+
+.calendar-cell--today {
+  background: #ffe8ec;
+  border-radius: 12rpx;
+}
+
+.calendar-cell--active {
+  background: #fff5f7;
+  border-radius: 12rpx;
+}
+
+.cell-day {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.calendar-cell--today .cell-day {
+  color: #ff2442;
+  font-weight: 700;
+}
+
+.cell-dot {
+  width: 8rpx;
+  height: 8rpx;
+  margin-top: 6rpx;
+  border-radius: 50%;
+  background: #ff2442;
+}
+
+.cell-badge {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 6rpx;
+  border-radius: 999rpx;
+  background: #ff2442;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell-badge-text {
+  font-size: 18rpx;
+  color: #ffffff;
+}
+
+.section-card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.section-subtitle {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.empty-hint {
+  margin-top: 24rpx;
+  padding: 40rpx;
+  text-align: center;
+  background: #f8f8f8;
+  border-radius: 12rpx;
+}
+
+.empty-hint-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.record-list {
+  margin-top: 20rpx;
+}
+
+.record-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.record-item:last-child {
+  border-bottom: none;
+}
+
+.record-cover {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.record-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
+.record-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
+.record-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
+.record-cover--black { background: linear-gradient(180deg, #535252, #989592); }
+.record-cover--green { background: linear-gradient(180deg, #bfd0c6, #f0f7f2); }
+.record-cover--brown { background: linear-gradient(180deg, #c5936b, #f4e7dc); }
+
+.record-image {
+  width: 100%;
+  height: 100%;
+}
+
+.record-icon {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: rgba(34, 28, 24, 0.6);
+}
+
+.record-info {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.record-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.record-meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.month-stats {
+  display: flex;
+  margin-top: 20rpx;
+  gap: 16rpx;
+}
+
+.month-stat {
+  flex: 1;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f8f8f8;
+  text-align: center;
+}
+
+.month-stat-value {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #ff2442;
+}
+
+.month-stat-label {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+</style>
+
+<script type="application/json">
+  {
+    "component": true
+  }
+</script>

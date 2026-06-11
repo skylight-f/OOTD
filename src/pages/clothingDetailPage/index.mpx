@@ -1,11 +1,17 @@
 <template>
-  <ClothingDetailPage />
+  <ClothingDetailPage clothingId="{{clothingId}}" />
 </template>
 
 <script lang="ts">
 import { createPage } from '@mpxjs/core'
-
-createPage({})
+createPage({
+  data: {
+    clothingId: ''
+  },
+  onLoad(options: { id?: string }) {
+    this.setData({ clothingId: options.id || '' })
+  }
+})
 </script>
 
 <script type="application/json">

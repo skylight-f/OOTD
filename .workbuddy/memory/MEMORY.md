@@ -40,9 +40,11 @@
 - [x] 搭配创建页入场动画（clothes-grid fadeSlideUp 错落延迟 + 表单 slideUp + 按钮交互反馈）
 - [x] 我的页面入场动画（profile-card/section-card fadeSlideUp 错落延迟 + 统计卡按压反馈）
 - [x] 衣物详情页尺码/价格展示与编辑（查看模式条件显示 + 编辑模式输入框 + saveEdit 持久化）
+- [x] 转场动画优化（衣橱页衣物列表 fadeSlideUp 错落动画）
+- [x] 衣物数据导出/导入功能（storage 层 exportAllData/importData + 我的页面数据管理入口）
+- [x] 穿搭日历视图（月度日历 + 穿着记录标记 + 当日详情 + 月度统计）
+- [x] API 层重构（server/request.ts 请求封装 + request/clothing.ts、outfit.ts 业务模块，Mock 模式）
 
 ## 待完善
 
 - [ ] 更多转场动画与交互细节
-- [ ] 衣物数据导出/导入功能
-- [ ] 穿搭日历视图

@@ -1,42 +1,39 @@
 <template>
   <view class="page create-page">
-    <!-- 衣物选择区域 -->
+    <!-- 已选衣物 -->
     <view class="section-card">
-      <text class="section-title">选择衣物（{{selectedIds.length}} 件）</text>
-      <text class="section-desc">从衣橱中选择搭配单品</text>
+      <text class="section-title">已选衣物（{{selectedIds.length}} 件）</text>
 
-      <view wx:if="{{clothes.length === 0}}" class="empty-hint">
-        <text class="empty-hint-text">衣橱还没有衣物，先去添加吧</text>
+      <view wx:if="{{selectedIds.length === 0}}" class="empty-hint">
+        <text class="empty-hint-text">还没有选择衣物，请从下方添加</text>
       </view>
 
-      <view wx:else class="clothes-grid">
-        <view
-          wx:for="{{clothes}}"
-          wx:key="id"
-          class="cloth-item {{selectedIds.indexOf(item.id) >= 0 ? 'cloth-item--selected' : ''}}"
-          data-id="{{item.id}}"
-          bindtap="toggleCloth"
-        >
-          <view class="cloth-cover cloth-cover--{{item.tone}}">
-            <image
-              wx:if="{{item.imagePath}}"
-              class="cloth-image"
-              src="{{item.imagePath}}"
-              mode="aspectFill"
-            />
-            <text wx:else class="cloth-icon">{{item.icon}}</text>
-            <view wx:if="{{selectedIds.indexOf(item.id) >= 0}}" class="cloth-check">
-              <text class="cloth-check-icon">✓</text>
+      <view wx:else class="selected-grid">
+        <view wx:for="{{selectedClothes}}" wx:key="id" class="selected-item">
+          <view class="selected-cover selected-cover--{{item.tone}}">
+            <image wx:if="{{item.imagePath}}" class="selected-image" src="{{item.imagePath}}" mode="aspectFill" />
+            <text wx:else class="selected-icon">{{item.icon}}</text>
+            <view class="selected-remove" data-id="{{item.id}}" catchtap="onRemoveCloth">
+              <text class="selected-remove-text">✕</text>
             </view>
           </view>
-          <text class="cloth-name">{{item.name}}</text>
-          <text class="cloth-meta">{{item.category}}</text>
+          <text class="selected-name">{{item.name}}</text>
+        </view>
+      </view>
+
+      <!-- 两个入口按钮 -->
+      <view class="action-row">
+        <view class="action-btn action-btn--select" bindtap="onOpenPicker">
+          <text class="action-btn-text">选择衣服</text>
+        </view>
+        <view class="action-btn action-btn--add" bindtap="onOpenAddForm">
+          <text class="action-btn-text">新增衣服</text>
         </view>
       </view>
     </view>
 
     <!-- 搭配信息 -->
-    <view class="section-card form-card">
+    <view class="section-card">
       <text class="section-title">搭配信息</text>
 
       <view class="form-field">
@@ -59,25 +56,116 @@
 
       <view class="form-field">
         <text class="field-label">描述</text>
-        <textarea class="field-textarea" placeholder="简单描述这组搭配的穿着场景或心得" value="{{form.description}}" data-field="description" bindinput="handleInput" maxlength="200" />
+        <textarea class="field-textarea" placeholder="简单描述这组搭配" value="{{form.description}}" data-field="description" bindinput="handleInput" maxlength="200" />
       </view>
 
       <view class="save-btn" bindtap="handleSave" hover-class="save-btn--pressed">
         <text class="save-btn-text">保存搭配</text>
       </view>
     </view>
+
+    <!-- 选择衣服弹窗（底部 60%） -->
+    <view class="picker-mask" wx:if="{{showPicker}}" bindtap="onClosePicker"></view>
+    <view class="picker-sheet {{showPicker ? 'picker-sheet--show' : ''}}">
+      <view class="picker-header">
+        <text class="picker-title">选择衣物</text>
+        <text class="picker-close" bindtap="onClosePicker">完成</text>
+      </view>
+
+      <view wx:if="{{allClothes.length === 0}}" class="picker-empty">
+        <text class="picker-empty-text">衣橱还没有衣物</text>
+      </view>
+
+      <scroll-view wx:else class="picker-list" scroll-y>
+        <view
+          wx:for="{{allClothes}}"
+          wx:key="id"
+          class="picker-item {{selectedIds.indexOf(item.id) >= 0 ? 'picker-item--selected' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onTogglePickerItem"
+        >
+          <view class="picker-cover picker-cover--{{item.tone}}">
+            <image wx:if="{{item.imagePath}}" class="picker-image" src="{{item.imagePath}}" mode="aspectFill" />
+            <text wx:else class="picker-icon">{{item.icon}}</text>
+          </view>
+          <view class="picker-info">
+            <text class="picker-name">{{item.name}}</text>
+            <text class="picker-meta">{{item.category}} · {{item.color}}</text>
+          </view>
+          <view class="picker-check" wx:if="{{selectedIds.indexOf(item.id) >= 0}}">
+            <text class="picker-check-icon">✓</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 新增衣服弹窗 -->
+    <view class="picker-mask" wx:if="{{showAddForm}}" bindtap="onCloseAddForm"></view>
+    <view class="picker-sheet {{showAddForm ? 'picker-sheet--show' : ''}}">
+      <view class="picker-header">
+        <text class="picker-title">新增衣服</text>
+        <text class="picker-close" bindtap="onCloseAddForm">✕</text>
+      </view>
+
+      <scroll-view class="picker-list" scroll-y>
+        <!-- 图片选择 -->
+        <view class="add-photo-area" bindtap="onTapAddPhoto">
+          <image wx:if="{{addForm.imagePath}}" class="add-photo-image" src="{{addForm.imagePath}}" mode="aspectFill" />
+          <view wx:else class="add-photo-placeholder">
+            <text class="add-photo-icon">📷</text>
+            <text class="add-photo-text">点击选择照片</text>
+          </view>
+        </view>
+
+        <view class="form-field">
+          <text class="field-label">衣物名称 *</text>
+          <input class="field-input" placeholder="如：燕麦针织开衫" value="{{addForm.name}}" data-field="name" bindinput="handleAddInput" />
+        </view>
+
+        <view class="form-field">
+          <text class="field-label">颜色</text>
+          <input class="field-input" placeholder="如：燕麦白" value="{{addForm.color}}" data-field="color" bindinput="handleAddInput" />
+        </view>
+
+        <view class="form-field">
+          <text class="field-label">类别</text>
+          <picker mode="selector" range="{{categoryOptions}}" value="{{addCategoryIndex}}" bindchange="onAddCategoryChange">
+            <view class="field-picker">
+              <text class="picker-text">{{categoryOptions[addCategoryIndex]}}</text>
+              <text class="picker-arrow">▸</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-field">
+          <text class="field-label">季节</text>
+          <picker mode="selector" range="{{seasonOptions}}" value="{{addSeasonIndex}}" bindchange="onAddSeasonChange">
+            <view class="field-picker">
+              <text class="picker-text">{{seasonOptions[addSeasonIndex]}}</text>
+              <text class="picker-arrow">▸</text>
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-actions">
+          <view class="form-btn form-btn--save" bindtap="onSaveAddCloth">
+            <text class="form-btn-text">添加并选中</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 </template>
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllClothes, addOutfit, inferTone, categoryToIcon, SCENE_OPTIONS, type ClothingItem } from '@/utils/storage'
-
+import { getAllClothes, addClothing, addOutfit, saveImageToTemp, inferTone, categoryToIcon, CATEGORY_OPTIONS, SEASON_OPTIONS, SCENE_OPTIONS, type ClothingItem } from '@/utils/storage'
 
 interface DisplayCloth {
   id: string
   name: string
   category: string
+  color: string
   tone: string
   icon: string
   imagePath: string
@@ -88,6 +176,7 @@ function toDisplayCloth(item: ClothingItem): DisplayCloth {
     id: item.id,
     name: item.name,
     category: item.category,
+    color: item.color,
     tone: item.tone || inferTone(item.color),
     icon: categoryToIcon(item.category),
     imagePath: item.imagePath
@@ -96,38 +185,151 @@ function toDisplayCloth(item: ClothingItem): DisplayCloth {
 
 createComponent({
   data: {
-    clothes: [] as DisplayCloth[],
+    allClothes: [] as DisplayCloth[],
     selectedIds: [] as string[],
+    selectedClothes: [] as DisplayCloth[],
     sceneOptions: SCENE_OPTIONS,
     selectedScene: '',
-    form: {
-      name: '',
-      description: ''
-    }
+    form: { name: '', description: '' },
+
+    // 选择弹窗
+    showPicker: false,
+
+    // 新增弹窗
+    showAddForm: false,
+    addForm: { name: '', color: '', imagePath: '' },
+    categoryOptions: CATEGORY_OPTIONS,
+    addCategoryIndex: 0,
+    seasonOptions: SEASON_OPTIONS,
+    addSeasonIndex: 0
   },
 
-  attached() {
-    this.loadClothes()
+  pageLifetimes: {
+    show() {
+      this.loadClothes()
+    }
   },
 
   methods: {
     loadClothes() {
       const all = getAllClothes().map(toDisplayCloth)
-      this.setData({ clothes: all })
+      const selected = all.filter((c) => this.data.selectedIds.includes(c.id))
+      this.setData({ allClothes: all, selectedClothes: selected })
     },
 
-    toggleCloth(e: { currentTarget: { dataset: { id: string } } }) {
+    updateSelected() {
+      const selected = this.data.allClothes.filter((c) => this.data.selectedIds.includes(c.id))
+      this.setData({ selectedClothes: selected })
+    },
+
+    // 选择弹窗
+    onOpenPicker() {
+      this.setData({ showPicker: true })
+    },
+
+    onClosePicker() {
+      this.setData({ showPicker: false })
+    },
+
+    onTogglePickerItem(e: { currentTarget: { dataset: { id: string } } }) {
       const id = e.currentTarget.dataset.id
-      const ids = this.data.selectedIds as string[]
+      const ids = [...this.data.selectedIds]
       const idx = ids.indexOf(id)
       if (idx >= 0) {
         ids.splice(idx, 1)
       } else {
         ids.push(id)
       }
-      this.setData({ selectedIds: [...ids] })
+      this.setData({ selectedIds: ids })
+      this.updateSelected()
     },
 
+    onRemoveCloth(e: { currentTarget: { dataset: { id: string } } }) {
+      const id = e.currentTarget.dataset.id
+      const ids = this.data.selectedIds.filter((i) => i !== id)
+      this.setData({ selectedIds: ids })
+      this.updateSelected()
+    },
+
+    // 新增弹窗
+    onOpenAddForm() {
+      this.setData({ showAddForm: true })
+    },
+
+    onCloseAddForm() {
+      this.setData({ showAddForm: false, addForm: { name: '', color: '', imagePath: '' }, addCategoryIndex: 0, addSeasonIndex: 0 })
+    },
+
+    onTapAddPhoto() {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          if (res.tempFiles && res.tempFiles.length > 0) {
+            this.setData({ 'addForm.imagePath': res.tempFiles[0].tempFilePath })
+          }
+        }
+      })
+    },
+
+    handleAddInput(e: { detail: { value: string }; currentTarget: { dataset: { field: string } } }) {
+      this.setData({ [`addForm.${e.currentTarget.dataset.field}`]: e.detail.value })
+    },
+
+    onAddCategoryChange(e: { detail: { value: string } }) {
+      this.setData({ addCategoryIndex: Number(e.detail.value) })
+    },
+
+    onAddSeasonChange(e: { detail: { value: string } }) {
+      this.setData({ addSeasonIndex: Number(e.detail.value) })
+    },
+
+    onSaveAddCloth() {
+      const { addForm, addCategoryIndex, addSeasonIndex, categoryOptions, seasonOptions } = this.data
+      if (!addForm.name.trim()) {
+        wx.showToast({ title: '请输入衣物名称', icon: 'none' })
+        return
+      }
+
+      wx.showLoading({ title: '添加中...' })
+
+      const doSave = (imagePath: string) => {
+        const newItem = addClothing({
+          name: addForm.name.trim(),
+          category: categoryOptions[addCategoryIndex],
+          color: addForm.color.trim() || '未填写',
+          material: '',
+          scene: '日常',
+          season: seasonOptions[addSeasonIndex],
+          imagePath,
+          tone: inferTone(addForm.color),
+          brand: '', size: '', price: ''
+        })
+
+        this.setData({
+          selectedIds: [...this.data.selectedIds, newItem.id],
+          showAddForm: false,
+          addForm: { name: '', color: '', imagePath: '' },
+          addCategoryIndex: 0,
+          addSeasonIndex: 0
+        })
+
+        this.loadClothes()
+        wx.hideLoading()
+        wx.showToast({ title: '已添加', icon: 'success' })
+      }
+
+      if (addForm.imagePath) {
+        saveImageToTemp(addForm.imagePath)
+          .then((savedPath: string) => doSave(savedPath))
+          .catch(() => doSave(addForm.imagePath))
+      } else {
+        doSave('')
+      }
+    },
+
+    // 搭配信息
     selectScene(e: { currentTarget: { dataset: { scene: string } } }) {
       this.setData({ selectedScene: e.currentTarget.dataset.scene })
     },
@@ -137,7 +339,7 @@ createComponent({
     },
 
     handleSave() {
-      const { selectedIds, form, selectedScene, clothes } = this.data
+      const { selectedIds, form, selectedScene, selectedClothes } = this.data
       if (selectedIds.length === 0) {
         wx.showToast({ title: '请至少选择一件衣物', icon: 'none' })
         return
@@ -147,8 +349,7 @@ createComponent({
         return
       }
 
-      // 根据选中衣物的色调选取第一个作为搭配色调
-      const firstCloth = clothes.find((c: DisplayCloth) => selectedIds.includes(c.id))
+      const firstCloth = selectedClothes[0]
       const tone = firstCloth ? firstCloth.tone : 'oat'
 
       addOutfit({
@@ -160,7 +361,9 @@ createComponent({
       })
 
       wx.showToast({ title: '搭配已保存', icon: 'success' })
-      setTimeout(() => wx.navigateBack(), 800)
+      setTimeout(() => {
+        wx.switchTab({ url: '/pages/outfitPage/index' })
+      }, 800)
     }
   }
 })
@@ -189,15 +392,8 @@ createComponent({
   color: #222222;
 }
 
-.section-desc {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #999999;
-}
-
 .empty-hint {
-  margin-top: 32rpx;
+  margin-top: 24rpx;
   padding: 40rpx;
   text-align: center;
   background: #f8f8f8;
@@ -209,118 +405,286 @@ createComponent({
   color: #999999;
 }
 
-.clothes-grid {
+.selected-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 20rpx;
 }
 
-.cloth-item {
+.selected-item {
   width: calc(25% - 12rpx);
-  padding: 12rpx;
-  border-radius: 12rpx;
-  background: #fafafa;
-  box-sizing: border-box;
-  border: 3rpx solid transparent;
-  animation: fadeSlideUp 0.35s ease-out backwards;
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
-.cloth-item:nth-child(1) { animation-delay: 0.03s; }
-.cloth-item:nth-child(2) { animation-delay: 0.06s; }
-.cloth-item:nth-child(3) { animation-delay: 0.09s; }
-.cloth-item:nth-child(4) { animation-delay: 0.12s; }
-.cloth-item:nth-child(5) { animation-delay: 0.15s; }
-.cloth-item:nth-child(6) { animation-delay: 0.18s; }
-.cloth-item:nth-child(7) { animation-delay: 0.21s; }
-.cloth-item:nth-child(8) { animation-delay: 0.24s; }
-
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(16rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.cloth-item--selected {
-  border-color: #ff2442;
-  background: #fff5f7;
-}
-
-.cloth-cover {
+.selected-cover {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 120rpx;
-  border-radius: 10rpx;
+  height: 140rpx;
+  border-radius: 12rpx;
   overflow: hidden;
 }
 
-.cloth-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
-.cloth-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
-.cloth-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
-.cloth-cover--black { background: linear-gradient(180deg, #535252, #989592); }
-.cloth-cover--green { background: linear-gradient(180deg, #bfd0c6, #f0f7f2); }
-.cloth-cover--brown { background: linear-gradient(180deg, #c5936b, #f4e7dc); }
-.cloth-cover--red { background: linear-gradient(180deg, #d4a0a0, #f5e6e6); }
-.cloth-cover--pink { background: linear-gradient(180deg, #e0b8c4, #f8edf2); }
-.cloth-cover--gray { background: linear-gradient(180deg, #b5b5b5, #e8e8e8); }
-.cloth-cover--white { background: linear-gradient(180deg, #e8e8e8, #f8f8f8); }
+.selected-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
+.selected-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
+.selected-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
+.selected-cover--black { background: linear-gradient(180deg, #535252, #989592); }
+.selected-cover--green { background: linear-gradient(180deg, #bfd0c6, #f0f7f2); }
+.selected-cover--brown { background: linear-gradient(180deg, #c5936b, #f4e7dc); }
+.selected-cover--red { background: linear-gradient(180deg, #d4a0a0, #f5e6e6); }
+.selected-cover--pink { background: linear-gradient(180deg, #e0b8c4, #f8edf2); }
+.selected-cover--gray { background: linear-gradient(180deg, #b5b5b5, #e8e8e8); }
+.selected-cover--white { background: linear-gradient(180deg, #e8e8e8, #f8f8f8); }
 
-.cloth-image { width: 100%; height: 100%; }
+.selected-image { width: 100%; height: 100%; }
 
-.cloth-icon {
+.selected-icon {
   font-size: 22rpx;
   font-weight: 700;
   color: rgba(34,28,24,0.6);
 }
 
-.cloth-check {
+.selected-remove {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 36rpx;
-  height: 36rpx;
+  top: 4rpx;
+  right: 4rpx;
+  width: 32rpx;
+  height: 32rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ff2442;
-  border-radius: 0 0 0 10rpx;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
 }
 
-.cloth-check-icon {
-  font-size: 20rpx;
-  font-weight: 700;
+.selected-remove-text {
+  font-size: 18rpx;
   color: #ffffff;
 }
 
-.cloth-name {
+.selected-name {
   display: block;
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #333333;
-  line-height: 1.3;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cloth-meta {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 20rpx;
+.action-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+}
+
+.action-btn--select {
+  background: #ff2442;
+}
+
+.action-btn--add {
+  background: #f5f5f5;
+}
+
+.action-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.action-btn--select .action-btn-text {
+  color: #ffffff;
+}
+
+.action-btn--add .action-btn-text {
+  color: #333333;
+}
+
+/* 底部弹窗 */
+.picker-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+}
+
+.picker-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 75vh;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 1001;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-sheet--show {
+  transform: translateY(0);
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 28rpx 20rpx;
+  flex-shrink: 0;
+}
+
+.picker-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #222222;
+}
+
+.picker-close {
+  font-size: 28rpx;
+  color: #ff2442;
+  font-weight: 600;
+}
+
+.picker-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.picker-empty-text {
+  font-size: 26rpx;
   color: #999999;
 }
 
-.form-field {
-  margin-top: 24rpx;
+.picker-list {
+  flex: 1;
+  padding: 0 28rpx 28rpx;
 }
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.picker-item:last-child {
+  border-bottom: none;
+}
+
+.picker-cover {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.picker-cover--oat { background: linear-gradient(180deg, #e5d7c3, #f6efe6); }
+.picker-cover--blue { background: linear-gradient(180deg, #bfd0e3, #edf4fb); }
+.picker-cover--cream { background: linear-gradient(180deg, #e6dccd, #fbf7ef); }
+.picker-cover--black { background: linear-gradient(180deg, #535252, #989592); }
+.picker-cover--green { background: linear-gradient(180deg, #bfd0c6, #f0f7f2); }
+.picker-cover--brown { background: linear-gradient(180deg, #c5936b, #f4e7dc); }
+.picker-cover--red { background: linear-gradient(180deg, #d4a0a0, #f5e6e6); }
+.picker-cover--pink { background: linear-gradient(180deg, #e0b8c4, #f8edf2); }
+.picker-cover--gray { background: linear-gradient(180deg, #b5b5b5, #e8e8e8); }
+.picker-cover--white { background: linear-gradient(180deg, #e8e8e8, #f8f8f8); }
+
+.picker-image { width: 100%; height: 100%; }
+
+.picker-icon {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: rgba(34,28,24,0.6);
+}
+
+.picker-info {
+  flex: 1;
+  margin-left: 20rpx;
+  min-width: 0;
+}
+
+.picker-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.picker-meta {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.picker-check {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #ff2442;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.picker-check-icon {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 新增衣物表单 */
+.add-photo-area {
+  margin: 0 0 20rpx;
+  width: 100%;
+  height: 200rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.add-photo-image { width: 100%; height: 100%; }
+
+.add-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.add-photo-icon { font-size: 48rpx; }
+
+.add-photo-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.form-field { margin-top: 20rpx; }
 
 .field-label {
   display: block;
@@ -332,7 +696,8 @@ createComponent({
 
 .field-input {
   width: 100%;
-  padding: 18rpx 20rpx;
+  height: 80rpx;
+  padding: 0 20rpx;
   border-radius: 8rpx;
   background: #f7f7f7;
   font-size: 28rpx;
@@ -349,6 +714,26 @@ createComponent({
   font-size: 28rpx;
   color: #333333;
   box-sizing: border-box;
+}
+
+.field-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border-radius: 8rpx;
+  background: #f7f7f7;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.picker-arrow {
+  font-size: 24rpx;
+  color: #999999;
 }
 
 .scene-tags {
@@ -371,23 +756,30 @@ createComponent({
   font-weight: 600;
 }
 
-.form-card {
-  animation: slideUp 0.4s ease-out;
+.form-actions {
+  margin-top: 28rpx;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(24rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.form-btn {
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+}
+
+.form-btn--save {
+  background: #ff2442;
+}
+
+.form-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 .save-btn {
-  margin-top: 32rpx;
+  margin-top: 28rpx;
   padding: 24rpx;
   border-radius: 12rpx;
   background: #ff2442;

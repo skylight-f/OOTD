@@ -44,7 +44,7 @@ createComponent({
     list: [
       { pagePath: 'pages/homePage/index', text: '首页', icon: 'home' },
       { pagePath: 'pages/closetPage/index', text: '衣橱', icon: 'closet' },
-      { pagePath: 'pages/addClothesPage/index', text: '添加', icon: 'add', primary: true },
+      { pagePath: '', text: '新建', icon: 'add', primary: true },
       { pagePath: 'pages/outfitPage/index', text: '搭配', icon: 'outfit' },
       { pagePath: 'pages/myPage/index', text: '我的', icon: 'user' }
     ]
@@ -66,13 +66,18 @@ createComponent({
 
     switchTab(event: TabEvent) {
       const { index, path } = event.currentTarget.dataset
-      if (Number(index) === this.data.selected) return
+      const idx = Number(index)
+      const item = this.data.list[idx]
 
-      this.setData({ selected: Number(index) })
+      // 中间按钮：navigateTo 跳转新建搭配
+      if (item.primary) {
+        wx.navigateTo({ url: '/pages/outfitCreatePage/index' })
+        return
+      }
 
-      wx.switchTab({
-        url: `/${path}`
-      })
+      if (idx === this.data.selected) return
+      this.setData({ selected: idx })
+      wx.switchTab({ url: `/${path}` })
     }
   }
 })

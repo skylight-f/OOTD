@@ -2,7 +2,7 @@
   <view class="page closet-dashboard-page">
     <view class="summary-card">
       <text class="eyebrow">衣橱数据看板</text>
-      <text class="summary-title">本季衣橱利用率 {{usageRate}}%</text>
+      <text class="summary-title">本季衣橱利用率 {{utilizationRate}}%</text>
       <text class="summary-desc">基于你的单品、常穿频率和场景覆盖，整理出更容易复穿的搭配方向。</text>
       <view class="summary-grid">
         <view wx:for="{{overviewStats}}" wx:key="label" class="summary-stat">
@@ -12,13 +12,15 @@
       </view>
     </view>
 
-    <view wx:if="{{hasClothes}}">
-      <view class="section-card">
+    <view class="section-card">
       <view class="section-head">
         <text class="section-title">分类占比</text>
         <text class="section-subtitle">按当前录入单品</text>
       </view>
-      <view class="bar-list">
+      <view wx:if="{{categoryBars.length === 0}}" class="empty-hint">
+        <text class="empty-hint-text">暂无衣物数据</text>
+      </view>
+      <view wx:else class="bar-list">
         <view wx:for="{{categoryBars}}" wx:key="label" class="bar-item">
           <view class="bar-row">
             <text class="bar-label">{{item.label}}</text>
@@ -29,38 +31,35 @@
           </view>
         </view>
       </view>
-      </view>
+    </view>
 
-      <view class="section-card">
+    <view class="section-card">
       <view class="section-head">
         <text class="section-title">场景覆盖</text>
-        <text class="section-subtitle">最近 30 天</text>
+        <text class="section-subtitle">按衣物场景标签</text>
       </view>
-      <view class="scene-grid">
+      <view wx:if="{{sceneStats.length === 0}}" class="empty-hint">
+        <text class="empty-hint-text">暂无场景数据</text>
+      </view>
+      <view wx:else class="scene-grid">
         <view wx:for="{{sceneStats}}" wx:key="label" class="scene-card">
           <text class="scene-value">{{item.value}}</text>
           <text class="scene-label">{{item.label}}</text>
           <text class="scene-desc">{{item.desc}}</text>
         </view>
       </view>
-      </view>
+    </view>
 
-      <view class="section-card">
+    <view class="section-card">
       <text class="section-title">复穿建议</text>
-      <view class="insight-list">
+      <view wx:if="{{insights.length === 0}}" class="empty-hint">
+        <text class="empty-hint-text">添加更多衣物后会生成复穿建议</text>
+      </view>
+      <view wx:else class="insight-list">
         <view wx:for="{{insights}}" wx:key="title" class="insight-item">
           <text class="insight-title">{{item.title}}</text>
           <text class="insight-desc">{{item.desc}}</text>
         </view>
-      </view>
-      </view>
-    </view>
-
-    <view wx:else class="section-card empty-card">
-      <text class="empty-title">衣橱还没有数据</text>
-      <text class="empty-desc">先添加几件衣物，再回来查看分类占比、场景覆盖和复穿建议。</text>
-      <view class="empty-btn" bindtap="goAddClothes">
-        <text class="empty-btn-text">去添加衣物</text>
       </view>
     </view>
   </view>
@@ -68,106 +67,163 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getAllClothes, getClothingStats, type ClothingItem } from '@/utils/storage'
+import { getAllClothes, getAllOutfits, getClothingStats, CATEGORY_OPTIONS, type ClothingItem } from '@/utils/storage'
 
-/** 计算分类占比 */
-function buildCategoryBars(clothes: ClothingItem[]) {
-  const cats: Record<string, ClothingItem[]> = {}
-  clothes.forEach((c) => {
-    const key = c.category
-    if (!cats[key]) cats[key] = []
-    cats[key].push(c)
-  })
-
-  const tones = ['green', 'blue', 'gold', 'rose', 'dark']
-  const max = Math.max(...Object.values(cats).map((v) => v.length), 1)
-  return Object.entries(cats)
-    .sort((a, b) => b[1].length - a[1].length)
-    .map(([label, items], i) => ({
-      label,
-      value: items.length,
-      rate: Math.round((items.length / max) * 100),
-      tone: tones[i % tones.length]
-    }))
+interface CategoryBar {
+  label: string
+  value: number
+  rate: number
+  tone: string
 }
 
-/** 计算场景覆盖 */
-function buildSceneStats(clothes: ClothingItem[]) {
-  const scenes: Record<string, number> = {}
+interface SceneStat {
+  label: string
+  value: string
+  desc: string
+}
+
+interface Insight {
+  title: string
+  desc: string
+}
+
+function buildCategoryBars(clothes: ClothingItem[]): CategoryBar[] {
+  if (clothes.length === 0) return []
+
+  const toneMap: Record<string, string> = {
+    '上装': 'green', '下装': 'blue', '外套': 'gold',
+    '鞋包': 'rose', '配饰': 'dark'
+  }
+
+  const counts: Record<string, number> = {}
   clothes.forEach((c) => {
-    c.scene.split(' / ').forEach((s) => {
-      const t = s.trim()
-      if (t) scenes[t] = (scenes[t] || 0) + 1
+    counts[c.category] = (counts[c.category] || 0) + 1
+  })
+
+  const maxCount = Math.max(...Object.values(counts))
+
+  return CATEGORY_OPTIONS
+    .filter((cat) => counts[cat])
+    .map((cat) => {
+      const count = counts[cat]
+      const label = cat === '鞋履' ? '鞋包' : cat === '包袋' ? '鞋包' : cat
+      return {
+        label,
+        value: count,
+        rate: Math.round((count / maxCount) * 100),
+        tone: toneMap[cat] || 'green'
+      }
+    })
+    .reduce((acc: CategoryBar[], item) => {
+      const existing = acc.find((a) => a.label === item.label)
+      if (existing) {
+        existing.value += item.value
+        existing.rate = Math.round((existing.value / maxCount) * 100)
+      } else {
+        acc.push(item)
+      }
+      return acc
+    }, [])
+}
+
+function buildSceneStats(clothes: ClothingItem[]): SceneStat[] {
+  if (clothes.length === 0) return []
+
+  const sceneCounts: Record<string, number> = {}
+  let totalScenes = 0
+
+  clothes.forEach((c) => {
+    const scenes = c.scene.split(' / ').map((s) => s.trim()).filter(Boolean)
+    scenes.forEach((s) => {
+      sceneCounts[s] = (sceneCounts[s] || 0) + 1
+      totalScenes++
     })
   })
 
-  const total = clothes.length || 1
-  const descByScene: Record<string, string> = {
-    '通勤': '覆盖最完整', '周末': '偏休闲基础款',
-    '约会': '缺少亮色配饰', '运动': '可补轻便外套',
-    '休闲': '基础款充足', '旅行': '功能性单品较少',
-    '正式': '可加配饰', '居家': '舒适单品为主'
+  const descMap: Record<string, string> = {
+    '通勤': '覆盖最完整',
+    '周末': '偏休闲基础款',
+    '约会': '可增加亮色单品',
+    '运动': '可补轻便外套',
+    '正式': '搭配较为完整',
+    '休闲': '基础款为主',
+    '旅行': '便携搭配为主',
+    '居家': '舒适优先'
   }
 
-  return Object.entries(scenes)
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
+  return Object.entries(sceneCounts)
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
-    .map(([label, count]) => ({
-      label,
-      value: Math.round((count / total) * 100) + '%',
-      desc: descByScene[label] || '搭配灵活'
+    .map(([scene, count]) => ({
+      label: scene,
+      value: `${Math.round((count / totalScenes) * 100)}%`,
+      desc: descMap[scene] || '搭配记录'
     }))
 }
 
-/** 生成复穿建议 */
-function buildInsights(clothes: ClothingItem[]): Array<{ title: string; desc: string }> {
-  const insights: Array<{ title: string; desc: string }> = []
-  const total = clothes.length
+function buildInsights(clothes: ClothingItem[], outfits: ReturnType<typeof getAllOutfits>): Insight[] {
+  const insights: Insight[] = []
 
-  if (total === 0) {
-    return [{ title: '衣橱还是空的', desc: '添加几件单品后，这里会自动出现搭配建议。' }]
+  if (clothes.length === 0) {
+    insights.push({
+      title: '开始添加衣物',
+      desc: '添加更多衣物后，系统会根据穿着频率和场景覆盖生成个性化复穿建议。'
+    })
+    return insights
   }
 
-  // 高频穿着（>3次）
-  const highWear = clothes.filter((c) => c.wearCount >= 3)
-  if (highWear.length > 0) {
-    const names = highWear.slice(0, 3).map((c) => c.name).join('、')
+  const mostWorn = clothes
+    .filter((c) => c.wearCount > 0)
+    .sort((a, b) => b.wearCount - a.wearCount)
+    .slice(0, 3)
+
+  if (mostWorn.length > 0) {
+    const names = mostWorn.map((c) => c.name).join('、')
     insights.push({
-      title: `${names}复穿率高`,
-      desc: `可以围绕这 ${highWear.length} 件高频单品继续生成更多搭配公式。`
+      title: '高频单品',
+      desc: `${names}复穿率较高，可以围绕这些单品继续生成搭配公式。`
     })
   }
 
-  // 检查类别缺失
   const categories = new Set(clothes.map((c) => c.category))
-  if (!categories.has('配饰')) {
+  if (categories.size < 4) {
     insights.push({
-      title: '缺少配饰品类',
-      desc: '添加项链、丝巾或腰带会明显提高搭配的丰富度和精致感。'
+      title: '品类待补充',
+      desc: `当前覆盖 ${categories.size} 个品类，建议补充${categories.has('鞋履') ? '' : '鞋履'}${categories.has('配饰') ? '' : '配饰'}等品类提升搭配灵活度。`
     })
   }
 
-  // 检查低利用率
-  const lowWear = clothes.filter((c) => c.wearCount === 0)
-  if (lowWear.length > 0) {
+  const scenes = new Set<string>()
+  clothes.forEach((c) => {
+    c.scene.split(' / ').map((s) => s.trim()).forEach((s) => scenes.add(s))
+  })
+
+  if (scenes.size < 3 && clothes.length >= 5) {
     insights.push({
-      title: `${lowWear.length} 件单品尚未穿着`,
-      desc: '检查是否有不适合当前季节的衣物，考虑搭配进本周穿搭。'
+      title: '场景覆盖待扩展',
+      desc: '当前衣物场景较为集中，可补充适合不同场合的单品。'
+    })
+  }
+
+  const unfavored = clothes.filter((c) => !c.favorite && c.wearCount === 0)
+  if (unfavored.length >= 3) {
+    insights.push({
+      title: '闲置单品提醒',
+      desc: `有 ${unfavored.length} 件衣物尚未穿着过，可以尝试搭配或考虑清理。`
     })
   }
 
   if (insights.length === 0) {
     insights.push({
-      title: '衣橱搭配很均衡',
-      desc: '品类齐全，穿着频率合理，继续保持当前的搭配习惯。'
+      title: '搭配表现良好',
+      desc: '你的衣橱利用较为均衡，继续保持！'
     })
   }
 
   return insights.slice(0, 3)
 }
 
-/** 计算利用率 */
-function calcUsageRate(clothes: ClothingItem[]): number {
+function calcUtilization(clothes: ClothingItem[]): number {
   if (clothes.length === 0) return 0
   const worn = clothes.filter((c) => c.wearCount > 0).length
   return Math.round((worn / clothes.length) * 100)
@@ -175,17 +231,16 @@ function calcUsageRate(clothes: ClothingItem[]): number {
 
 createComponent({
   data: {
-    hasClothes: false,
+    utilizationRate: 0,
     overviewStats: [
       { label: '总单品', value: '0' },
       { label: '本季可穿', value: '0' },
       { label: '高频单品', value: '0' },
       { label: '待整理', value: '0' }
     ],
-    usageRate: 0,
-    categoryBars: [] as ReturnType<typeof buildCategoryBars>,
-    sceneStats: [] as ReturnType<typeof buildSceneStats>,
-    insights: [] as ReturnType<typeof buildInsights>
+    categoryBars: [] as CategoryBar[],
+    sceneStats: [] as SceneStat[],
+    insights: [] as Insight[]
   },
 
   attached() {
@@ -195,29 +250,24 @@ createComponent({
   methods: {
     refreshData() {
       const clothes = getAllClothes()
-      const stats = getClothingStats()
-      const highWear = clothes.filter((c) => c.wearCount >= 3).length
-      const zeroWear = clothes.filter((c) => c.wearCount === 0).length
-      const usageRate = calcUsageRate(clothes)
+      const outfits = getAllOutfits()
+      const statsData = getClothingStats()
+
+      const wornClothes = clothes.filter((c) => c.wearCount > 0)
+      const highFreq = wornClothes.filter((c) => c.wearCount >= 3).length
+      const neverWorn = clothes.filter((c) => c.wearCount === 0).length
 
       this.setData({
-        hasClothes: clothes.length > 0,
+        utilizationRate: calcUtilization(clothes),
         overviewStats: [
-          { label: '总单品', value: String(stats.total) },
-          { label: '本季可穿', value: String(stats.seasonCount) },
-          { label: '高频单品', value: String(highWear) },
-          { label: '待整理', value: String(zeroWear) }
+          { label: '总单品', value: String(statsData.total) },
+          { label: '本季可穿', value: String(statsData.seasonCount) },
+          { label: '高频单品', value: String(highFreq) },
+          { label: '待整理', value: String(neverWorn) }
         ],
-        usageRate,
         categoryBars: buildCategoryBars(clothes),
         sceneStats: buildSceneStats(clothes),
-        insights: buildInsights(clothes)
-      })
-    },
-
-    goAddClothes() {
-      wx.switchTab({
-        url: '/pages/addClothesPage/index'
+        insights: buildInsights(clothes, outfits)
       })
     }
   }
@@ -317,6 +367,19 @@ createComponent({
 .section-subtitle {
   color: #8a8a8a;
   font-size: 22rpx;
+}
+
+.empty-hint {
+  margin-top: 24rpx;
+  padding: 40rpx;
+  text-align: center;
+  background: #f8f8f8;
+  border-radius: 12rpx;
+}
+
+.empty-hint-text {
+  font-size: 24rpx;
+  color: #999999;
 }
 
 .bar-list {
@@ -434,39 +497,6 @@ createComponent({
 .insight-item:last-child {
   padding-bottom: 0;
   border-bottom: 0;
-}
-
-.empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.empty-title {
-  color: #222222;
-  font-size: 32rpx;
-  font-weight: 700;
-}
-
-.empty-desc {
-  margin-top: 14rpx;
-  color: #777777;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
-
-.empty-btn {
-  margin-top: 28rpx;
-  padding: 20rpx 36rpx;
-  border-radius: 999rpx;
-  background: #ff2442;
-}
-
-.empty-btn-text {
-  color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 700;
 }
 
 .insight-title {

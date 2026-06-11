@@ -22,12 +22,13 @@ createApp({})
       "./pages/homePage/index",
       "./pages/closetPage/index",
       "./pages/closetDashboardPage/index",
-      "./pages/clothingDetailPage/index",
       "./pages/addClothesPage/index",
+      "./pages/outfitPage/index",
       "./pages/outfitCreatePage/index",
       "./pages/outfitDetailPage/index",
-      "./pages/outfitPage/index",
-      "./pages/myPage/index"
+      "./pages/clothingDetailPage/index",
+      "./pages/myPage/index",
+      "./pages/calendarPage/index"
     ],
     "tabBar": {
       "custom": true,
@@ -43,10 +44,6 @@ createApp({})
         {
           "pagePath": "pages/closetPage/index",
           "text": "衣橱"
-        },
-        {
-          "pagePath": "pages/addClothesPage/index",
-          "text": "添加"
         },
         {
           "pagePath": "pages/outfitPage/index",
