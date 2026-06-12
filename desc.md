@@ -1,3 +1,13 @@
+# OOTD — 智能衣橱管理小程序
+
+OOTD（Outfit Of The Day）是一款微信小程序，帮助用户管理个人衣橱、记录穿搭搭配，并根据天气情况提供穿衣建议。
+
+**技术栈**：Mpx + Vue 2 + TypeScript + Less，通过 `@mpxjs/mpx-cli-service` 支持跨平台构建（微信、支付宝、Web 等）。
+
+**数据方案**：当前全部使用微信本地存储（`wx.setStorageSync`），无后端依赖。API 层已抽象，切换真实接口只需修改 `USE_MOCK` 开关。
+
+## 功能模块
+
 | 模块 | 当前状态 |
 | --- | --- |
 | **首页推荐** | 自定义导航栏展示品牌、城市天气和快捷入口；首页包含"今日天气 / 推荐"tab，默认推荐，可点击或左右滑动切换，并带有轻量过渡动画。页面每次显示时自动刷新瀑布流数据。 |
@@ -10,7 +20,37 @@
 | **穿搭日历** | 月度日历视图展示穿着记录，点击查看当日详情，月度统计（穿搭天数/次数/搭配数）。 |
 | **我的** | 展示个人风格画像（根据实际数据分析生成）、收藏/打卡数据、数据管理（导出/导入）和常用设置入口。 |
 | **数据管理** | 支持导出所有数据到剪贴板，从剪贴板导入数据（合并模式，跳过重复）。 |
-| **API 层** | 统一请求封装（server/request.ts），业务模块（request/clothing.ts、outfit.ts）当前使用 Mock 模式调用 storage，切换真接口只需改 USE_MOCK 为 false。 |
+| **云同步** | 通过 WebDAV 网盘（坚果云）自动同步数据和图片。用户配置服务器地址、用户名和应用密码，基于时间戳比对实现自动同步。首次使用需在坚果云根目录创建 `ootd` 文件夹。数据文件：`/ootd/wardrobe.json`，图片目录：`/ootd/images/`。上传时将本地图片上传到云端并替换路径为 URL；下载时从云端拉取图片到本地并替换路径。 |
+| **API 层** | 统一请求封装（`api/server/request.ts`，基于 `@mpxjs/fetch`），baseUrl 按环境版本自动切换（测试/正式）。业务模块（`api/request/clothing.ts`、`outfit.ts`）当前使用 Mock 模式调用 storage，切换真接口只需改 `USE_MOCK = false`。 |
 | **导航结构** | 使用自定义 tabBar，底部 5 个入口为：首页、衣橱、新建、搭配、我的；"新建"位于中间并高亮凸起，点击进入新建搭配页。首页右上角日历图标跳转穿搭日历。 |
 | **新建搭配** | 中间 tabBar 入口。支持从衣橱选择已有衣物，也可直接新增衣物并自动选中。保存搭配后跳转搭配列表。 |
 | **添加衣物** | 衣橱页提供入口，跳转独立添加衣物页面（拍照/相册/表单编辑）。 |
+
+## 技术架构
+
+```
+src/
+├── app.mpx                    # 应用入口，页面路由与 tabBar 配置
+├── custom-tab-bar/            # 自定义 tabBar（5 tab，中间"新建"凸起）
+├── components/                # 公共组件
+├── pages/
+│   └── <pageName>/
+│       ├── index.mpx          # 页面壳（createPage，生命周期 + JSON 配置）
+│       └── component/*.mpx    # 页面组件（createComponent，实际 UI）
+├── api/
+│   ├── server/request.ts      # HTTP 封装（xfetch + 拦截器）
+│   └── request/               # 业务 API（clothing、outfit），USE_MOCK 开关
+└── utils/
+    ├── storage.ts             # 数据 CRUD 抽象层（衣物 + 搭配）
+    ├── sync.ts                # WebDAV 云同步（坚果云）
+    ├── weather.ts             # 和风天气 API + Mock 降级
+    ├── tabBar.ts              # 自定义 tabBar 选中态工具
+    └── location.ts            # 定位工具
+```
+
+**关键约定**：
+- `.mpx` 文件 PascalCase，文件夹 camelCase
+- 路径别名 `@/` → `src/`
+- 样式只用 Less（Stylus 仅框架内部依赖）
+- wx API 类型在 `src/global.d.ts` 中手写，不引入外部类型包
+- Tab 页面必须在 `onShow` 调用 `setCustomTabBarSelected(this, N)`

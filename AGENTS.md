@@ -21,8 +21,11 @@ src/
   pages/<pageName>/
     index.mpx          ← 薄页面壳（创建页面 + 设置 tab 选中态）
     component/<PageName>.mpx  ← 实际页面组件（逻辑 + 模板 + 样式）
+  api/
+    server/request.ts  ← xfetch 封装（@mpxjs/fetch），baseUrl 按环境版本切换
+    request/           ← 业务 API（clothing.ts、outfit.ts），每个文件顶部有 USE_MOCK 开关
   utils/
-    storage.ts         ← 所有数据 CRUD（wx 本地存储），抽象层
+    storage.ts         ← 所有衣物/搭配 CRUD（wx 本地存储），数据抽象层
     weather.ts         ← 和风天气 API + 自动 Mock 降级
     tabBar.ts          ← setCustomTabBarSelected 工具函数
     location.ts        ← 位置工具
@@ -33,14 +36,16 @@ src/
 - **文件命名**：`.mpx` 文件用 PascalCase，文件夹用 camelCase。
 - **路径别名**：`@/` → `src/`（tsconfig.json 配置）。
 - **样式**：只用 Less。Stylus 已安装但不能使用（框架内部依赖）。
-- **TabBar**：自定义实现。每个 tab 页面必须在 `onShow` 中调用 `setCustomTabBarSelected(this, N)`。Tab 索引：0=首页, 1=衣橱, 2=添加, 3=搭配, 4=我的。
+- **TabBar**：自定义实现。每个 tab 页面必须在 `onShow` 中调用 `setCustomTabBarSelected(this, N)`。Tab 索引：0=首页, 1=衣橱, 2=添加, 3=搭配, 4=我的。注意：`app.mpx` 的 tabBar JSON 只声明 4 个原生 tab（无"新建"），"新建"由 custom-tab-bar 组件中的 `primary: true` 项处理，点击后跳转 `outfitCreatePage`。
 - **wx 类型**：在 `src/global.d.ts` 中手写。不要引入 `miniprogram-api-typings` 等外部类型包。
+- **TypeScript**：tsconfig 启用了 `noImplicitThis`、`noImplicitAny`、`strictNullChecks`。新增代码需满足这些约束。
 - **数据层**：所有衣物/搭配数据通过 `src/utils/storage.ts` 流转。Storage key：`OOTD_CLOTHES`、`OOTD_OUTFITS`。迁移到后端只需改这一个文件。
+- **API Mock/真接口切换**：`src/api/request/clothing.ts` 和 `outfit.ts` 各有 `const USE_MOCK = true`，Mock 模式下调用 storage 直接操作本地数据。切换真接口只需将 `USE_MOCK` 改为 `false`，无需改动页面代码。
 - **天气**：和风天气 API。`QWEATHER_KEY` 默认为空 → 自动 Mock。填入 Key 后切换真实数据，见 `src/utils/weather.ts`。
 
 ## 注意事项
 
-- `index.mpx` 页面壳和 `component/<Name>.mpx` 是两个文件。壳负责页面生命周期 + JSON 配置；组件负责实际 UI。不要合并它们。
+- `index.mpx` 页面壳和 `component/<Name>.mpx` 是两个文件。壳用 `createPage` 负责页面生命周期 + JSON 配置；组件用 `createComponent` 负责实际 UI。不要合并它们。
 - Mpx 组件生命周期与原生微信不同：组件初始化用 `attached`（不是 `onLoad`）。页面级生命周期（`onShow`）正常使用。
 - `methods` 块中不要加 `this: any`（Mpx `ThisType` 自动推断）。只有生命周期钩子可能需要显式 `this: any`。
 - 构建产物输出到 `dist/<target>/`，该目录已 gitignore。

@@ -37,12 +37,91 @@
         </view>
       </view>
     </view>
+
+    <view class="section-card" wx:if="{{showSyncPanel}}">
+      <view class="sync-header">
+        <text class="section-title">云同步设置</text>
+        <text class="sync-close" bindtap="onCloseSync">关闭</text>
+      </view>
+
+      <view class="sync-form">
+        <view class="form-item">
+          <text class="form-label">服务器地址</text>
+          <input
+            class="form-input"
+            placeholder="https://dav.jianguoyun.com/dav/"
+            value="{{syncConfig.url}}"
+            data-field="url"
+            bindinput="onSyncInput"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label">用户名</text>
+          <input
+            class="form-input"
+            placeholder="邮箱或应用账号"
+            value="{{syncConfig.username}}"
+            data-field="username"
+            bindinput="onSyncInput"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label">应用密码</text>
+          <input
+            class="form-input"
+            placeholder="非主密码，请使用应用密码"
+            password="{{true}}"
+            value="{{syncConfig.password}}"
+            data-field="password"
+            bindinput="onSyncInput"
+          />
+        </view>
+      </view>
+
+      <view class="sync-actions">
+        <view class="sync-btn sync-btn--save" bindtap="onSaveSyncConfig">
+          <text>保存配置</text>
+        </view>
+        <view class="sync-btn sync-btn--test" bindtap="onTestSync">
+          <text>测试连接</text>
+        </view>
+      </view>
+
+      <view class="sync-divider"></view>
+
+      <view class="sync-actions">
+        <view class="sync-btn sync-btn--upload" bindtap="onUploadSync">
+          <text>上传到云端</text>
+        </view>
+        <view class="sync-btn sync-btn--download" bindtap="onDownloadSync">
+          <text>从云端下载</text>
+        </view>
+      </view>
+
+      <view class="sync-actions">
+        <view class="sync-btn sync-btn--auto" bindtap="onAutoSync">
+          <text>自动同步</text>
+        </view>
+      </view>
+
+      <text class="sync-hint">首次使用请先在坚果云根目录创建 ootd 文件夹</text>
+      <text class="sync-status" wx:if="{{syncStatus}}">{{syncStatus}}</text>
+    </view>
   </view>
 </template>
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { getClothingStats, getAllOutfits, getAllClothes, exportAllData, importData } from '@/utils/storage'
+import { getClothingStats, getAllOutfits, getAllClothes, exportAllData, importData, getLocalTime } from '@/utils/storage'
+import {
+  getConfig as getSyncConfig,
+  saveConfig as saveSyncConfig,
+  testConnection,
+  uploadToCloud,
+  downloadFromCloud,
+  autoSync,
+  type WebdavConfig
+} from '@/utils/sync'
 
 /** 计算连续打卡天数 */
 function calcStreak(clothes: ReturnType<typeof getAllClothes>): number {
@@ -130,11 +209,19 @@ createComponent({
       { title: '穿搭日历', desc: '查看每日穿搭记录和月度统计' },
       { title: '衣橱管理', desc: '分类整理、批量编辑、清理闲置单品' },
       { title: '数据管理', desc: '导出备份、导入恢复衣物和搭配数据' },
-      { title: '账号设置', desc: '同步数据、隐私偏好和小程序设置' }
-    ]
+      { title: '云同步', desc: '通过 WebDAV 网盘同步数据到云端' }
+    ],
+    showSyncPanel: false,
+    syncConfig: {
+      url: '',
+      username: '',
+      password: ''
+    } as WebdavConfig,
+    syncStatus: '' as string
   },
 
   attached() {
+    this.loadSyncConfig()
     this.refreshData()
   },
 
@@ -145,6 +232,19 @@ createComponent({
   },
 
   methods: {
+    loadSyncConfig() {
+      const config = getSyncConfig()
+      if (config) {
+        this.setData({
+          syncConfig: {
+            url: config.url,
+            username: config.username,
+            password: config.password
+          }
+        })
+      }
+    },
+
     onTapMenu(e: { currentTarget: { dataset: { index: number } } }) {
       const index = Number(e.currentTarget.dataset.index)
 
@@ -163,12 +263,10 @@ createComponent({
         return
       }
 
-      wx.showModal({
-        title: '账号设置',
-        content: '当前版本使用本地存储，账号同步与隐私偏好设置会在后续版本开放。',
-        showCancel: false,
-        confirmText: '知道了'
-      })
+      if (index === 3) {
+        this.setData({ showSyncPanel: !this.data.showSyncPanel, syncStatus: '' })
+        return
+      }
     },
 
     /** 数据管理：导出/导入 */
@@ -222,6 +320,75 @@ createComponent({
           })
         }
       })
+    },
+
+    /** WebDAV 表单输入 */
+    onSyncInput(e: { detail: { value: string }; currentTarget: { dataset: { field: string } } }) {
+      const field = e.currentTarget.dataset.field
+      const value = e.detail.value
+      this.setData({
+        [`syncConfig.${field}`]: value
+      })
+    },
+
+    /** 保存配置 */
+    onSaveSyncConfig() {
+      const { url, username, password } = this.data.syncConfig
+      if (!url || !username || !password) {
+        wx.showToast({ title: '请填写完整配置', icon: 'none' })
+        return
+      }
+      saveSyncConfig({ url, username, password })
+      wx.showToast({ title: '配置已保存', icon: 'success' })
+    },
+
+    /** 测试连接 */
+    async onTestSync() {
+      const { url, username, password } = this.data.syncConfig
+      if (!url || !username || !password) {
+        wx.showToast({ title: '请先填写配置', icon: 'none' })
+        return
+      }
+      this.setData({ syncStatus: '正在测试连接...' })
+      const result = await testConnection({ url, username, password })
+      this.setData({ syncStatus: result.message })
+    },
+
+    /** 上传到云端 */
+    async onUploadSync() {
+      this.setData({ syncStatus: '正在上传...' })
+      const result = await uploadToCloud()
+      this.setData({ syncStatus: result.message })
+      if (result.success) {
+        wx.showToast({ title: '上传成功', icon: 'success' })
+      }
+    },
+
+    /** 从云端下载 */
+    async onDownloadSync() {
+      this.setData({ syncStatus: '正在下载...' })
+      const result = await downloadFromCloud()
+      this.setData({ syncStatus: result.message })
+      if (result.success) {
+        this.refreshData()
+        wx.showToast({ title: '下载成功', icon: 'success' })
+      }
+    },
+
+    /** 自动同步 */
+    async onAutoSync() {
+      this.setData({ syncStatus: '正在同步...' })
+      const result = await autoSync()
+      this.setData({ syncStatus: result.message })
+      if (result.success) {
+        this.refreshData()
+        wx.showToast({ title: '同步完成', icon: 'success' })
+      }
+    },
+
+    /** 关闭同步面板 */
+    onCloseSync() {
+      this.setData({ showSyncPanel: false, syncStatus: '' })
     },
 
     refreshData() {
@@ -438,6 +605,111 @@ createComponent({
 .menu-arrow {
   font-size: 28rpx;
   color: #927c6d;
+}
+
+.sync-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sync-close {
+  font-size: 24rpx;
+  color: #927c6d;
+}
+
+.sync-form {
+  margin-top: 20rpx;
+}
+
+.form-item {
+  margin-bottom: 16rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 22rpx;
+  color: #7b685b;
+  margin-bottom: 8rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  padding: 0 20rpx;
+  border-radius: 16rpx;
+  background: rgba(125, 106, 92, 0.08);
+  font-size: 26rpx;
+  color: #2c231b;
+  box-sizing: border-box;
+}
+
+.sync-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.sync-btn {
+  flex: 1;
+  padding: 18rpx;
+  border-radius: 16rpx;
+  text-align: center;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.sync-btn:active {
+  opacity: 0.8;
+}
+
+.sync-btn--save {
+  background: #1f3c34;
+  color: #f8f4ee;
+}
+
+.sync-btn--test {
+  background: rgba(125, 106, 92, 0.12);
+  color: #4a3f36;
+}
+
+.sync-btn--upload {
+  background: #2d6a4f;
+  color: #f8f4ee;
+}
+
+.sync-btn--download {
+  background: #4a6fa5;
+  color: #f8f4ee;
+}
+
+.sync-btn--auto {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #f8f4ee;
+}
+
+.sync-divider {
+  height: 1rpx;
+  background: rgba(125, 106, 92, 0.14);
+  margin: 20rpx 0;
+}
+
+.sync-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 20rpx;
+  color: #927c6d;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.sync-status {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #7b685b;
+  text-align: center;
 }
 </style>
 

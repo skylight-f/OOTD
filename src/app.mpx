@@ -1,9 +1,16 @@
 <script lang="ts">
 import mpx, { createApp } from '@mpxjs/core'
 import apiProxy from '@mpxjs/api-proxy'
+import { autoSync } from '@/utils/sync'
 
 mpx.use(apiProxy, { usePromise: true })
-createApp({})
+
+createApp({
+  onLaunch() {
+    // 打开小程序时自动同步
+    autoSync().catch(() => {})
+  }
+})
 </script>
 
 <style>

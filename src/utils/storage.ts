@@ -67,8 +67,34 @@ export type ClothingInput = Omit<ClothingItem, 'id' | 'createdAt' | 'wearCount' 
 /** 存储 key */
 const STORAGE_KEY = 'OOTD_CLOTHES'
 
+/** 同步时间戳 key */
+const SYNC_TIME_KEY = 'OOTD_SYNC_TIME'
+
 /** 图片持久化目录名 */
-const IMAGE_DIR = 'clothes_images'
+export const IMAGE_DIR = 'clothes_images'
+
+// ============================================================
+// 时间戳管理
+// ============================================================
+
+/** 获取本地数据最后修改时间 */
+export function getLocalTime(): number {
+  try {
+    return wx.getStorageSync(SYNC_TIME_KEY) || 0
+  } catch {
+    return 0
+  }
+}
+
+/** 设置本地数据修改时间 */
+export function setLocalTime(time: number): void {
+  wx.setStorageSync(SYNC_TIME_KEY, time)
+}
+
+/** 标记本地数据已修改 */
+export function markDirty(): void {
+  setLocalTime(Date.now())
+}
 
 // ============================================================
 // 工具函数
@@ -106,6 +132,7 @@ function readClothesList(): ClothingItem[] {
  */
 function writeClothesList(list: ClothingItem[]): void {
   wx.setStorageSync(STORAGE_KEY, list)
+  markDirty()
 }
 
 // ============================================================
@@ -370,7 +397,10 @@ function readOutfitList(): OutfitItem[] {
   catch { return [] }
 }
 
-function writeOutfitList(list: OutfitItem[]): void { wx.setStorageSync(OUTFIT_KEY, list) }
+function writeOutfitList(list: OutfitItem[]): void {
+  wx.setStorageSync(OUTFIT_KEY, list)
+  markDirty()
+}
 
 export function getAllOutfits(): OutfitItem[] { return readOutfitList() }
 
@@ -441,6 +471,10 @@ export function importData(jsonStr: string, mode: 'merge' | 'cover' = 'merge'): 
     if (mode === 'cover') {
       writeClothesList(data.clothes)
       writeOutfitList(data.outfits || [])
+      // 覆盖模式：使用导入数据的时间戳（如果有）
+      if (data.exportTime) {
+        setLocalTime(data.exportTime)
+      }
     } else {
       // 合并模式：跳过已存在的 ID
       const existingClothes = readClothesList()

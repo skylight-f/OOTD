@@ -1,6 +1,6 @@
 <template>
   <view class="page home-page home-page--{{transitionDirection}}" bindtouchstart="handleTabTouchStart" bindtouchend="handleTabTouchEnd">
-    <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="custom-nav" style="padding-top: {{statusBarHeight}}px; padding-right: {{navRightPad}}px;">
       <view class="nav-content">
         <view class="nav-main">
           <text class="nav-title">OOTD</text>
@@ -409,6 +409,7 @@ createComponent({
     activeTab: 'recommend',
     transitionDirection: 'idle',
     statusBarHeight: 44,
+    navRightPad: 200,
     touchStartX: 0,
     touchStartY: 0,
     weatherLoading: false,
@@ -438,12 +439,22 @@ createComponent({
     wardrobeEmpty: false
   },
   attached() {
-    // 获取状态栏高度
+    // 获取状态栏高度和胶囊按钮位置
     if (typeof wx !== 'undefined' && typeof wx.getSystemInfoSync === 'function') {
       const systemInfo = wx.getSystemInfoSync()
       this.setData({
         statusBarHeight: systemInfo.statusBarHeight || 44
       })
+
+      // 计算导航栏右侧 padding，避免被胶囊按钮遮挡
+      try {
+        const menuButton = wx.getMenuButtonBoundingClientRect()
+        // 胶囊按钮右侧到屏幕右侧的距离 + 胶囊宽度 + 左侧间距
+        const rightPad = systemInfo.screenWidth - menuButton.left + 16
+        this.setData({ navRightPad: rightPad })
+      } catch {
+        // 降级处理：使用默认值
+      }
     }
 
     // 加载真实瀑布流数据
