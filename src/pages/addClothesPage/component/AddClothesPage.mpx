@@ -227,8 +227,9 @@
 
 <script lang="ts">
 import { createComponent } from '@mpxjs/core'
-import { addClothing, saveImageToTemp, inferTone } from '@/utils/storage'
+import { addClothing, saveImageToTemp, inferTone, generateId } from '@/utils/storage'
 import type { ClothingInput } from '@/utils/storage'
+import { uploadImageToWebDAV } from '@/utils/sync'
 
 createComponent({
   data: {
@@ -457,9 +458,26 @@ createComponent({
       const scene = selectedScenes.length > 0 ? selectedScenes.join(' / ') : '日常'
       const tone = inferTone(formData.color)
 
-      // 保存图片到持久目录，然后保存衣物数据
-      const doSaveClothing = (imagePath: string) => {
+      // 先保存图片到本地，再上传 WebDAV，最后保存衣物
+      const doSaveClothing = async (localPath: string) => {
         try {
+          wx.showLoading({ title: '上传图片中...' })
+
+          // 上传图片到 WebDAV
+          let imagePath = localPath
+          try {
+            const webdavUrl = await uploadImageToWebDAV(localPath, 'temp_' + Date.now())
+            if (webdavUrl) {
+              imagePath = webdavUrl
+            }
+          } catch (e) {
+            wx.hideLoading()
+            wx.showToast({ title: '图片上传失败，请重试', icon: 'none', duration: 2000 })
+            return
+          }
+
+          wx.showLoading({ title: '保存中...' })
+
           const input: ClothingInput = {
             name: formData.name.trim(),
             category: category,
@@ -474,7 +492,17 @@ createComponent({
             price: formData.price.trim()
           }
 
-          addClothing(input)
+          const newItem = addClothing(input)
+
+          // 如果本地路径不是远端 URL，用真实 ID 重新上传并更新
+          if (imagePath === localPath && localPath) {
+            uploadImageToWebDAV(localPath, newItem.id).then((url) => {
+              if (url) {
+                const { updateClothing } = require('@/utils/storage')
+                updateClothing(newItem.id, { imagePath: url })
+              }
+            }).catch(() => {})
+          }
 
           wx.hideLoading()
           wx.showToast({ title: '添加成功', icon: 'success', duration: 1500 })
@@ -491,11 +519,8 @@ createComponent({
 
       if (selectedImage) {
         saveImageToTemp(selectedImage)
-          .then((savedPath) => {
-            doSaveClothing(savedPath)
-          })
+          .then((savedPath) => doSaveClothing(savedPath))
           .catch(() => {
-            // 图片保存失败时，使用临时路径继续
             doSaveClothing(selectedImage)
           })
       } else {
@@ -510,7 +535,7 @@ createComponent({
 .page {
   min-height: 100vh;
   padding: 32rpx 24rpx 170rpx;
-  background: #f6f6f6;
+  background: linear-gradient(180deg, #f6efe8 0%, #efe6db 100%);
   box-sizing: border-box;
 }
 
@@ -518,8 +543,8 @@ createComponent({
 .entry-card,
 .tips-card,
 .form-card {
-  background: #ffffff;
-  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
 }
 
 .scan-card {
@@ -527,7 +552,7 @@ createComponent({
   flex-direction: column;
   align-items: center;
   padding: 52rpx 34rpx;
-  border-radius: 8rpx;
+  border-radius: 28rpx;
 }
 
 .camera-mark {
@@ -537,8 +562,8 @@ createComponent({
   width: 132rpx;
   height: 132rpx;
   border-radius: 50%;
-  background: #ff2442;
-  box-shadow: 0 16rpx 34rpx rgba(255, 36, 66, 0.28);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  box-shadow: 0 16rpx 34rpx rgba(201, 123, 138, 0.28);
 }
 
 .camera-plus {
@@ -576,7 +601,7 @@ createComponent({
   width: 48.5%;
   margin-bottom: 18rpx;
   padding: 26rpx 22rpx;
-  border-radius: 8rpx;
+  border-radius: 24rpx;
   box-sizing: border-box;
 }
 
@@ -587,8 +612,8 @@ createComponent({
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background: #ffe8ec;
-  color: #ff2442;
+  background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%);
+  color: var(--color-primary);
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -643,7 +668,7 @@ createComponent({
   margin-top: 13rpx;
   margin-right: 14rpx;
   border-radius: 50%;
-  background: #ff2442;
+  background: var(--color-primary);
 }
 
 .tip-text {
@@ -662,7 +687,7 @@ createComponent({
 
 .form-card {
   padding: 28rpx;
-  border-radius: 8rpx;
+  border-radius: 28rpx;
   margin-top: 18rpx;
 }
 
@@ -705,12 +730,12 @@ createComponent({
 .preview-btn {
   padding: 12rpx 32rpx;
   border-radius: 999rpx;
-  background: #ffe8ec;
+  background: #efe3d8;
 }
 
 .preview-btn-text {
   font-size: 24rpx;
-  color: #ff2442;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -772,20 +797,21 @@ createComponent({
 .scene-tag {
   padding: 14rpx 28rpx;
   border-radius: 999rpx;
-  background: #f2f2f2;
+  background: #efe3d8;
+  color: #6d5a4a;
 }
 
 .scene-tag--active {
-  background: #ff2442;
+  background: var(--color-primary);
 }
 
 .scene-tag-text {
   font-size: 24rpx;
-  color: #666666;
+  color: #6d5a4a;
 }
 
 .scene-tag--active .scene-tag-text {
-  color: #ffffff;
+  color: #fff8f0;
   font-weight: 600;
 }
 
@@ -833,9 +859,9 @@ createComponent({
   align-items: center;
   justify-content: center;
   height: 88rpx;
-  border-radius: 8rpx;
-  background: #ff2442;
-  box-shadow: 0 12rpx 28rpx rgba(255, 36, 66, 0.28);
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  box-shadow: 0 12rpx 28rpx rgba(201, 123, 138, 0.28);
 }
 
 .btn-save-text {
@@ -871,7 +897,7 @@ createComponent({
   position: relative;
   width: 85%;
   background: #ffffff;
-  border-radius: 20rpx;
+  border-radius: 28rpx;
   overflow: hidden;
   animation: modalIn 0.25s ease-out;
 }
@@ -950,9 +976,9 @@ createComponent({
 }
 
 .tag-btn-confirm {
-  background: #ff2442;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #ffffff;
-  box-shadow: 0 8rpx 20rpx rgba(255, 36, 66, 0.28);
+  box-shadow: 0 8rpx 20rpx rgba(201, 123, 138, 0.28);
 }
 </style>
 

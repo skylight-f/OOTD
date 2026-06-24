@@ -472,7 +472,7 @@ createComponent({
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  background: linear-gradient(180deg, #1f3c34 0%, #48685d 100%);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #f8f4ee;
   font-size: 30rpx;
   font-weight: 700;
@@ -520,7 +520,7 @@ createComponent({
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #1f3c34;
+  color: var(--color-primary);
 }
 
 .profile-stat__label {
@@ -665,7 +665,7 @@ createComponent({
 }
 
 .sync-btn--save {
-  background: #1f3c34;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #f8f4ee;
 }
 
@@ -675,17 +675,17 @@ createComponent({
 }
 
 .sync-btn--upload {
-  background: #2d6a4f;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #f8f4ee;
 }
 
 .sync-btn--download {
-  background: #4a6fa5;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #f8f4ee;
 }
 
 .sync-btn--auto {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #f8f4ee;
 }
 

@@ -14,7 +14,7 @@ createApp({
 </script>
 
 <style>
-
+@import './stylus/theme.css';
 </style>
 
 <script type="application/json">

@@ -27,7 +27,7 @@
       </view>
     </view>
 
-    <view wx:if="{{activeTab === 'recommend'}}" class="recommend-panel panel-motion">
+    <view wx:if="{{activeTab === 'recommend'}}" class="recommend-panel">
       <view class="feed-tools">
         <view class="city-pill">
           <text class="city-dot"></text>
@@ -64,7 +64,7 @@
     </view>
 
     <view wx:else class="weather-panel panel-motion">
-      <view class="hero-card">
+      <view class="hero-card" style="background: {{weatherGradient}}">
         <view class="hero-main">
           <text class="eyebrow">天气驱动推荐</text>
           <text class="city">{{weather.city}}</text>
@@ -345,12 +345,12 @@ function toneToClass(tone: string): string {
 async function buildWaterfallCards(): Promise<WaterfallCard[][]> {
   const cards: WaterfallCard[] = []
   const clothesRes = await fetchAllClothes()
-  const clothes = clothesRes.data
+  const clothes: ClothingItem[] = clothesRes.data as any
 
   // ① 搭配记录 → 卡片
   const outfitsRes = await fetchAllOutfits()
-  const outfits = outfitsRes.data
-  outfits.forEach((o: OutfitItem) => {
+  const outfits: OutfitItem[] = outfitsRes.data as any
+  outfits.forEach((o) => {
     const previewImage = clothes.find((item) => o.clothingIds.includes(item.id) && item.imagePath)?.imagePath || ''
     cards.push({
       id: o.id,
@@ -367,7 +367,7 @@ async function buildWaterfallCards(): Promise<WaterfallCard[][]> {
   })
 
   // ② 有穿着记录的衣物 → 卡片
-  clothes.filter((c) => c.wearCount > 0).forEach((c: ClothingItem) => {
+  clothes.filter((c: ClothingItem) => c.wearCount > 0).forEach((c: ClothingItem) => {
     cards.push({
       id: c.id,
       type: 'clothing',
@@ -385,11 +385,11 @@ async function buildWaterfallCards(): Promise<WaterfallCard[][]> {
   // ③ 按创建时间倒序排列
   cards.sort((a, b) => {
     const aItem = a.type === 'outfit'
-      ? outfits.find((o) => o.id === a.id)
-      : clothes.find((c) => c.id === a.id)
+      ? outfits.find((o: OutfitItem) => o.id === a.id)
+      : clothes.find((c: ClothingItem) => c.id === a.id)
     const bItem = b.type === 'outfit'
-      ? outfits.find((o) => o.id === b.id)
-      : clothes.find((c) => c.id === b.id)
+      ? outfits.find((o: OutfitItem) => o.id === b.id)
+      : clothes.find((c: ClothingItem) => c.id === b.id)
     const aTime = aItem ? (aItem as any).createdAt || 0 : 0
     const bTime = bItem ? (bItem as any).createdAt || 0 : 0
     return bTime - aTime
@@ -404,6 +404,30 @@ async function buildWaterfallCards(): Promise<WaterfallCard[][]> {
   return columns
 }
 
+/** 天气条件 → 渐变色 */
+const WEATHER_GRADIENTS: Record<string, string> = {
+  '晴': 'linear-gradient(160deg, var(--color-primary) 0%, #e8a88c 55%, #fce4d6 100%)',
+  '多云': 'linear-gradient(160deg, #8e9aaf 0%, #b8c5d6 55%, #e8e0d8 100%)',
+  '小雨': 'linear-gradient(160deg, #6b7d8e 0%, #8fa4b5 55%, #c8d6e0 100%)',
+  '阴': 'linear-gradient(160deg, #7a8694 0%, #a0adb8 55%, #d0d8de 100%)',
+  '大雨': 'linear-gradient(160deg, #4a5568 0%, #6b7d8e 55%, #9ca3af 100%)',
+  '雷阵雨': 'linear-gradient(160deg, #5a6577 0%, #7d8a9c 55%, #b0bec5 100%)',
+  '雪': 'linear-gradient(160deg, #b0c4de 0%, #d6e5f3 55%, #f0f5fa 100%)',
+  '雾': 'linear-gradient(160deg, #9ca3af 0%, #c5ccd4 55%, #e8ebed 100%)',
+  '默认': 'linear-gradient(160deg, var(--color-primary) 0%, #e8a88c 55%, #fce4d6 100%)',
+}
+
+const WEATHER_THEME_KEYS: Record<string, string> = {
+  '晴': 'sunny',
+  '多云': 'cloudy',
+  '小雨': 'rain',
+  '阴': 'overcast',
+  '大雨': 'heavy-rain',
+  '雷阵雨': 'storm',
+  '雪': 'snow',
+  '雾': 'fog',
+}
+
 createComponent({
   data: {
     activeTab: 'recommend',
@@ -413,6 +437,7 @@ createComponent({
     touchStartX: 0,
     touchStartY: 0,
     weatherLoading: false,
+    weatherGradient: WEATHER_GRADIENTS['默认'],
     homeTabs: [
       { key: 'weather', label: '今日天气' },
       { key: 'recommend', label: '推荐' }
@@ -450,7 +475,7 @@ createComponent({
       try {
         const menuButton = wx.getMenuButtonBoundingClientRect()
         // 胶囊按钮右侧到屏幕右侧的距离 + 胶囊宽度 + 左侧间距
-        const rightPad = systemInfo.screenWidth - menuButton.left + 16
+        const rightPad = (systemInfo.screenWidth || 375) - menuButton.left + 16
         this.setData({ navRightPad: rightPad })
       } catch {
         // 降级处理：使用默认值
@@ -519,6 +544,7 @@ createComponent({
             high: String(weatherData.high),
             tags: weatherData.tags
           },
+          weatherGradient: WEATHER_GRADIENTS[weatherData.condition] || WEATHER_GRADIENTS['默认'],
           recommendation,
           reasons,
           agendas,
@@ -555,6 +581,13 @@ createComponent({
         activeTab: tab,
         transitionDirection: nextIndex > activeIndex ? 'forward' : 'backward'
       })
+
+      // 切换到推荐tab时刷新瀑布流数据
+      if (tab === 'recommend') {
+        buildWaterfallCards().then((columns) => {
+          this.setData({ waterfallColumns: columns })
+        })
+      }
     },
     handleTabTouchStart(event: HomeTouchEvent) {
       const touchPoint = event.touches && event.touches[0]
@@ -1102,7 +1135,6 @@ createComponent({
 
 .hero-card {
   padding: 30rpx;
-  background: linear-gradient(160deg, #23453c 0%, #49685f 55%, #dbc6b3 100%);
 }
 
 .hero-main {
@@ -1246,8 +1278,8 @@ createComponent({
   flex-shrink: 0;
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
-  background: #ffe8ec;
-  color: #ff2442;
+  background: rgba(201, 123, 138, 0.08);
+  color: var(--color-primary);
   font-size: 20rpx;
   font-weight: 600;
 }
@@ -1256,12 +1288,12 @@ createComponent({
   margin-top: 16rpx;
   padding: 14rpx 20rpx;
   border-radius: 12rpx;
-  background: #fef0f3;
+  background: rgba(201, 123, 138, 0.06);
 }
 
 .wardrobe-hint-text {
   font-size: 22rpx;
-  color: #ff2442;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -1273,7 +1305,7 @@ createComponent({
   height: 44rpx;
   margin-right: 18rpx;
   border-radius: 50%;
-  background: #24453c;
+  background: var(--color-primary);
   color: #fff8f0;
   font-size: 22rpx;
   font-weight: 700;
@@ -1367,7 +1399,7 @@ createComponent({
 .wardrobe-guide {
   padding: 40rpx;
   text-align: center;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+  background: linear-gradient(135deg, #e5d7c3 0%, #f6efe6 100%);
 }
 
 .guide-icon {
@@ -1379,7 +1411,7 @@ createComponent({
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #ff2442;
+  color: var(--color-primary);
   margin-bottom: 12rpx;
 }
 
@@ -1395,8 +1427,8 @@ createComponent({
   display: inline-block;
   padding: 20rpx 60rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #ff2442 0%, #ff6b6b 100%);
-  box-shadow: 0 8rpx 20rpx rgba(255, 36, 66, 0.3);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  box-shadow: 0 8rpx 20rpx rgba(201, 123, 138, 0.3);
 }
 
 .guide-btn-text {

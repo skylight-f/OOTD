@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * WebDAV 云同步工具
  *
@@ -132,7 +133,7 @@ function webdavRequest(
         })
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || '网络请求失败'))
+        reject(new Error((err as any).errMsg || '网络请求失败'))
       }
     })
   })
@@ -190,7 +191,7 @@ async function uploadImage(
         },
         data: buf,
         success: (r) => resolve({ status: r.statusCode }),
-        fail: (err) => reject(new Error(err.errMsg))
+        fail: (err) => reject(new Error((err as any).errMsg))
       })
     })
 
@@ -201,6 +202,13 @@ async function uploadImage(
   } catch {
     return null
   }
+}
+
+/** 上传单个图片到 WebDAV，返回远端 URL */
+export async function uploadImageToWebDAV(localPath: string, imageId: string): Promise<string | null> {
+  const config = getConfig()
+  if (!config) return null
+  return uploadImage(config, localPath, imageId)
 }
 
 /** 从 WebDAV 下载单个图片到本地 */
@@ -234,7 +242,7 @@ async function downloadImage(
           'Authorization': buildAuthHeader(config)
         },
         success: (r) => resolve({ status: r.statusCode, data: r.data as ArrayBuffer }),
-        fail: (err) => reject(new Error(err.errMsg))
+        fail: (err) => reject(new Error((err as any).errMsg))
       })
     })
 
@@ -397,7 +405,7 @@ async function pushToCloud(config: WebdavConfig, data: any, localTime: number): 
           })
         },
         fail: (err) => {
-          reject(new Error(err.errMsg || '请求失败'))
+          reject(new Error((err as any).errMsg || '请求失败'))
         }
       })
     })

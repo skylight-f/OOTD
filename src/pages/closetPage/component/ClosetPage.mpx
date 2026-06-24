@@ -320,7 +320,7 @@ createComponent({
   flex-shrink: 0;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #1f3c34;
+  background: var(--color-primary);
   color: #fff8f0;
   font-size: 22rpx;
   font-weight: 600;
@@ -359,7 +359,7 @@ createComponent({
   display: block;
   font-size: 34rpx;
   font-weight: 700;
-  color: #1f3c34;
+  color: var(--color-primary);
 }
 
 .stat-label {
@@ -473,8 +473,8 @@ createComponent({
 }
 
 .chip--active {
-  background: #ff2442;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: #fff8f0;
   font-weight: 600;
 }
 
@@ -658,7 +658,7 @@ createComponent({
   margin-top: 8rpx;
   padding: 0 18rpx 18rpx;
   font-size: 22rpx;
-  color: #1f3c34;
+  color: var(--color-primary);
 }
 </style>
 

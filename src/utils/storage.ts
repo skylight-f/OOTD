@@ -421,6 +421,20 @@ export function deleteOutfit(id: string): boolean {
   return true
 }
 
+export function updateOutfit(
+  id: string,
+  updates: Partial<Omit<OutfitItem, 'id' | 'createdAt'>>
+): OutfitItem | undefined {
+  const list = readOutfitList()
+  const index = list.findIndex((item) => item.id === id)
+  if (index === -1) return undefined
+
+  const updated: OutfitItem = { ...list[index], ...updates, id: list[index].id, createdAt: list[index].createdAt }
+  list[index] = updated
+  writeOutfitList(list)
+  return updated
+}
+
 export function recordOutfitWear(id: string): boolean {
   const list = readOutfitList()
   const index = list.findIndex((item) => item.id === id)

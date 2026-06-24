@@ -1,0 +1,67 @@
+/**
+ * OOTD 主题变量
+ * 
+ * 统一管理主题色、圆角、字体颜色、阴影等设计 token
+ * 修改此处即可全局切换风格
+ */
+
+:root {
+  /* ========== 主题色 ========== */
+  --color-primary: #c97b8a;
+  --color-primary-light: #dba0ae;
+  --color-primary-dark: #a86575;
+  --color-primary-bg: rgba(201, 123, 138, 0.08);
+  --color-primary-bg-hover: rgba(201, 123, 138, 0.12);
+  --color-primary-shadow: rgba(201, 123, 138, 0.28);
+
+  /* ========== 渐变色 ========== */
+  --gradient-primary: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  --gradient-page: linear-gradient(180deg, #f6efe8 0%, #efe6db 100%);
+
+  /* ========== 中性色 ========== */
+  --color-bg-page: #f6f6f6;
+  --color-bg-card: rgba(255, 250, 245, 0.96);
+  --color-bg-input: rgba(125, 106, 92, 0.08);
+  --color-bg-chip: #efe3d8;
+  --color-bg-chip-active: var(--color-primary);
+  --color-bg-hover: rgba(201, 123, 138, 0.06);
+
+  /* ========== 文字颜色 ========== */
+  --color-text-primary: #2a211b;
+  --color-text-secondary: #7b685b;
+  --color-text-tertiary: #927c6d;
+  --color-text-on-primary: #fff8f0;
+  --color-text-on-chip: #6d5a4a;
+
+  /* ========== 圆角 ========== */
+  --radius-xs: 8rpx;
+  --radius-sm: 12rpx;
+  --radius-md: 20rpx;
+  --radius-lg: 28rpx;
+  --radius-xl: 30rpx;
+  --radius-full: 999rpx;
+
+  /* ========== 阴影 ========== */
+  --shadow-card: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
+  --shadow-button: 0 8rpx 20rpx rgba(201, 123, 138, 0.28);
+
+  /* ========== 字体 ========== */
+  --font-size-xs: 20rpx;
+  --font-size-sm: 22rpx;
+  --font-size-base: 24rpx;
+  --font-size-md: 26rpx;
+  --font-size-lg: 28rpx;
+  --font-size-xl: 30rpx;
+  --font-size-2xl: 34rpx;
+  --font-size-3xl: 38rpx;
+
+  /* ========== 间距 ========== */
+  --spacing-xs: 8rpx;
+  --spacing-sm: 12rpx;
+  --spacing-md: 16rpx;
+  --spacing-lg: 20rpx;
+  --spacing-xl: 24rpx;
+  --spacing-2xl: 28rpx;
+  --spacing-3xl: 32rpx;
+  --spacing-4xl: 40rpx;
+}

@@ -349,7 +349,7 @@ createComponent({
 </script>
 
 <style lang="less">
-.page { min-height: 100vh; padding-bottom: 40rpx; background: #f6f6f6; box-sizing: border-box; }
+.page { min-height: 100vh; padding-bottom: 40rpx; background: linear-gradient(180deg, #f6efe8 0%, #efe6db 100%); box-sizing: border-box; }
 
 .image-section { width: 100%; height: 520rpx; overflow: hidden; }
 .cover-image { width: 100%; height: 100%; }
@@ -367,7 +367,7 @@ createComponent({
 .cover-icon { font-size: 60rpx; font-weight: 700; color: rgba(34,28,24,0.55); }
 .cover-label { margin-top: 16rpx; font-size: 24rpx; color: rgba(34,28,24,0.45); }
 
-.info-card { margin: 24rpx; padding: 32rpx; border-radius: 16rpx; background: #ffffff; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.04); }
+.info-card { margin: 24rpx; padding: 32rpx; border-radius: 28rpx; background: rgba(255, 250, 245, 0.96); box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08); }
 .info-head { display: flex; align-items: flex-start; justify-content: space-between; }
 .info-name { display: block; font-size: 38rpx; font-weight: 700; color: #222222; }
 .info-category { display: block; margin-top: 8rpx; font-size: 24rpx; color: #999999; }
@@ -392,7 +392,7 @@ createComponent({
 
 .info-section { margin-top: 24rpx; }
 .scene-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
-.scene-badge { padding: 8rpx 20rpx; border-radius: 999rpx; background: #f0f0f0; font-size: 22rpx; color: #555555; }
+.scene-badge { padding: 8rpx 20rpx; border-radius: 999rpx; background: #efe3d8; font-size: 22rpx; color: var(--color-primary); }
 
 .stats-row { display: flex; margin-top: 12rpx; gap: 16rpx; }
 .detail-stat { flex: 1; padding: 16rpx 12rpx; border-radius: 12rpx; background: linear-gradient(180deg, #fef9f3, #faf3ea); text-align: center; }
@@ -400,18 +400,18 @@ createComponent({
 .detail-stat-label { display: block; margin-top: 6rpx; font-size: 20rpx; color: #8a7768; }
 
 .action-bar { display: flex; margin-top: 32rpx; gap: 16rpx; }
-.action-btn { flex: 1; padding: 20rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; }
+.action-btn { flex: 1; padding: 20rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
 .action-btn--pressed { opacity: 0.8; }
-.action-btn--wear { background: #e8f5e9; }
-.action-btn--edit { background: #fff3e0; }
-.action-btn--delete { background: #fce4ec; }
-.action-btn-text { font-size: 26rpx; font-weight: 600; color: #333333; }
+.action-btn--wear { background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%); }
+.action-btn--edit { background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%); }
+.action-btn--delete { background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%); }
+.action-btn-text { font-size: 26rpx; font-weight: 600; color: var(--color-primary); }
 
-.favorite-btn { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; border-radius: 50%; background: #f5f5f5; transition: all 0.25s ease; }
-.favorite-btn--active { background: #fff0f3; animation: favPop 0.3s ease; }
+.favorite-btn { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; border-radius: 50%; background: #efe3d8; transition: all 0.25s ease; }
+.favorite-btn--active { background: linear-gradient(180deg, #e5d7c3 0%, #f6efe6 100%); animation: favPop 0.3s ease; }
 @keyframes favPop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
-.favorite-icon { font-size: 36rpx; color: #cccccc; transition: color 0.2s ease; }
-.favorite-btn--active .favorite-icon { color: #ff2442; }
+.favorite-icon { font-size: 36rpx; color: #927c6d; transition: color 0.2s ease; }
+.favorite-btn--active .favorite-icon { color: var(--color-primary); }
 
 .edit-title { display: block; font-size: 30rpx; font-weight: 700; color: #222222; margin-bottom: 8rpx; }
 .form-field { margin-top: 24rpx; }
@@ -422,17 +422,17 @@ createComponent({
 .picker-arrow { font-size: 24rpx; color: #999999; }
 
 .scene-tags { display: flex; flex-wrap: wrap; gap: 14rpx; }
-.scene-tag { padding: 12rpx 24rpx; border-radius: 999rpx; background: #f5f5f5; color: #666666; font-size: 24rpx; }
-.scene-tag--active { background: #ffe8ec; color: #ff2442; font-weight: 600; }
+.scene-tag { padding: 12rpx 24rpx; border-radius: 999rpx; background: #efe3d8; color: #6d5a4a; font-size: 24rpx; }
+.scene-tag--active { background: var(--color-primary); color: #fff8f0; font-weight: 600; }
 
 .edit-actions { display: flex; margin-top: 32rpx; gap: 20rpx; }
-.edit-btn { flex: 1; padding: 22rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; }
+.edit-btn { flex: 1; padding: 22rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
 .edit-btn--pressed { opacity: 0.85; }
-.edit-btn--cancel { background: #f5f5f5; }
-.edit-btn--save { background: #ff2442; }
+.edit-btn--cancel { background: #efe3d8; }
+.edit-btn--save { background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%); }
 .edit-btn-text { font-size: 28rpx; font-weight: 600; }
-.edit-btn--cancel .edit-btn-text { color: #666666; }
-.edit-btn--save .edit-btn-text { color: #ffffff; }
+.edit-btn--cancel .edit-btn-text { color: #6d5a4a; }
+.edit-btn--save .edit-btn-text { color: #fff8f0; }
 </style>
 
 <script type="application/json">

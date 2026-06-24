@@ -218,25 +218,26 @@ createComponent({
 .page {
   min-height: 100vh;
   padding: 32rpx 24rpx 170rpx;
-  background: #f6f6f6;
+  background: linear-gradient(180deg, #f6efe8 0%, #efe6db 100%);
   box-sizing: border-box;
 }
 
 .hero-card,
 .outfit-card {
-  border-radius: 8rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  border-radius: 28rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
 }
 
 .hero-card {
-  padding: 34rpx 30rpx;
+  padding: 30rpx;
 }
 
 .eyebrow {
-  color: #ff2442;
+  color: #8c715d;
   font-size: 22rpx;
   font-weight: 700;
+  letter-spacing: 4rpx;
 }
 
 .hero-title {
@@ -251,14 +252,14 @@ createComponent({
 .create-btn {
   margin-top: 20rpx;
   padding: 24rpx;
-  border-radius: 8rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 28rpx rgba(0,0,0,0.05);
+  border-radius: 28rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  border: 2rpx dashed #ff2442;
+  border: 2rpx dashed var(--color-primary);
 }
 
 .create-btn--pressed { opacity: 0.8; }
@@ -266,14 +267,14 @@ createComponent({
 .create-btn-icon {
   font-size: 32rpx;
   font-weight: 700;
-  color: #ff2442;
+  color: var(--color-primary);
   line-height: 1;
 }
 
 .create-btn-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #ff2442;
+  color: var(--color-primary);
 }
 
 .search-bar {
@@ -283,9 +284,9 @@ createComponent({
   height: 76rpx;
   margin-top: 18rpx;
   padding: 0 18rpx;
-  border-radius: 8rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  border-radius: 28rpx;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
 }
 
 .search-icon {
@@ -319,16 +320,17 @@ createComponent({
 }
 
 .scene-chip {
-  padding: 8rpx 18rpx;
+  padding: 12rpx 20rpx;
   border-radius: 999rpx;
-  background: #ffffff;
-  color: #777777;
+  background: #efe3d8;
+  color: #6d5a4a;
   font-size: 22rpx;
 }
 
 .scene-chip--active {
-  background: #ff2442;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: #fff8f0;
+  font-weight: 600;
 }
 
 .empty-state {
@@ -359,10 +361,10 @@ createComponent({
   display: flex;
   overflow: hidden;
   margin-bottom: 18rpx;
-  border-radius: 8rpx;
-  background: #ffffff;
+  border-radius: 24rpx;
+  background: rgba(255, 250, 245, 0.96);
   position: relative;
-  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 16rpx 40rpx rgba(92, 63, 39, 0.08);
   animation: fadeSlideUp 0.4s ease-out backwards;
 }
 
@@ -442,8 +444,8 @@ createComponent({
 .outfit-title {
   display: block;
   font-size: 30rpx;
-  font-weight: 700;
-  color: #222222;
+  font-weight: 600;
+  color: #2a211b;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

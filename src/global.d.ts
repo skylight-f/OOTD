@@ -65,6 +65,32 @@ declare namespace wx {
     [key: string]: unknown
   }
 
+  function getMenuButtonBoundingClientRect(): {
+    width: number
+    height: number
+    left: number
+    top: number
+  }
+
+  // ------ 交互 ------
+  function showActionSheet(options: {
+    itemList: string[]
+    success?: (res: { tapIndex: number }) => void
+    fail?: (err: unknown) => void
+  }): void
+
+  // ------ 剪贴板 ------
+  function setClipboardData(options: {
+    data: string
+    success?: () => void
+    fail?: (err: unknown) => void
+  }): void
+
+  function getClipboardData(options: {
+    success?: (res: { data: string }) => void
+    fail?: (err: unknown) => void
+  }): void
+
   // ------ 网络 ------
   interface RequestSuccessCallbackResult {
     data: unknown
@@ -79,6 +105,7 @@ declare namespace wx {
     data?: unknown
     header?: Record<string, string>
     dataType?: string
+    responseType?: string
     success?: (res: RequestSuccessCallbackResult) => void
     fail?: (err: unknown) => void
     complete?: () => void
@@ -127,6 +154,7 @@ declare namespace wx {
   // ------ 存储 ------
   function getStorageSync(key: string): any
   function setStorageSync(key: string, data: unknown): void
+  function removeStorageSync(key: string): void
 
   // ------ 文件系统 ------
   interface FileSystemManager {
@@ -142,6 +170,10 @@ declare namespace wx {
       success?: (res: { savedFilePath: string }) => void
       fail?: (err: unknown) => void
     }): void
+    readFileSync(filePath: string, encoding?: string): any
+    writeFileSync(filePath: string, data: string | ArrayBuffer): void
+    mkdirSync(dirPath: string, recursive?: boolean): void
+    accessSync(path: string): void
   }
 
   function getFileSystemManager(): FileSystemManager

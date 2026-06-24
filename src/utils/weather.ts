@@ -74,18 +74,37 @@ export interface ClothingRecommendation {
 // Mock 数据
 // ============================================================
 
-const MOCK_WEATHER: WeatherInfo = {
-  city: DEFAULT_CITY,
-  summary: '多云转小雨，体感偏凉',
-  temperature: 21,
-  low: 18,
-  high: 24,
-  tags: ['通勤日', '午后有雨', '适合叠穿'],
-  condition: '多云',
-  feelsLike: 20,
-  humidity: 72,
-  windDir: '东南风',
-  windScale: '2'
+const MOCK_CONDITIONS = [
+  { condition: '晴', summary: '晴空万里，适合外出', temperature: 28, low: 22, high: 32, tags: ['晴天', '注意防晒', '适合户外'], feelsLike: 30, humidity: 45 },
+  { condition: '多云', summary: '多云间晴，温度适宜', temperature: 23, low: 18, high: 27, tags: ['通勤日', '适合叠穿'], feelsLike: 22, humidity: 55 },
+  { condition: '小雨', summary: '小雨绵绵，记得带伞', temperature: 16, low: 13, high: 19, tags: ['记得带伞', '适合叠穿', '注意保暖'], feelsLike: 14, humidity: 82 },
+  { condition: '阴', summary: '阴天微凉，适合穿搭', temperature: 19, low: 15, high: 22, tags: ['通勤日', '适合叠穿'], feelsLike: 18, humidity: 65 },
+  { condition: '大雨', summary: '大雨倾盆，注意出行安全', temperature: 14, low: 11, high: 17, tags: ['记得带伞', '注意防滑', '减少外出'], feelsLike: 12, humidity: 90 },
+  { condition: '雷阵雨', summary: '午后雷阵雨，注意防范', temperature: 26, low: 21, high: 30, tags: ['午后有雨', '注意防雷', '适合叠穿'], feelsLike: 28, humidity: 70 },
+  { condition: '雪', summary: '雪花纷飞，注意保暖', temperature: 2, low: -2, high: 5, tags: ['注意保暖', '注意防滑', '减少外出'], feelsLike: -1, humidity: 60 },
+  { condition: '雾', summary: '大雾弥漫，能见度低', temperature: 18, low: 14, high: 21, tags: ['注意行车安全', '适合叠穿'], feelsLike: 17, humidity: 95 },
+]
+
+/** 生成随机 Mock 天气数据 */
+function generateMockWeather(): WeatherInfo {
+  const idx = Math.floor(Math.random() * MOCK_CONDITIONS.length)
+  const mock = MOCK_CONDITIONS[idx]
+  const day = new Date().getDay()
+  const dayTag = day >= 1 && day <= 5 ? '通勤日' : '周末'
+
+  return {
+    city: DEFAULT_CITY,
+    summary: mock.summary,
+    temperature: mock.temperature + Math.floor(Math.random() * 5 - 2),
+    low: mock.low,
+    high: mock.high,
+    tags: [dayTag, ...mock.tags.slice(0, 2)],
+    condition: mock.condition,
+    feelsLike: mock.feelsLike,
+    humidity: mock.humidity,
+    windDir: ['东风', '南风', '西风', '北风', '东南风'][Math.floor(Math.random() * 5)],
+    windScale: String(Math.floor(Math.random() * 4) + 1)
+  }
 }
 
 // ============================================================
@@ -250,7 +269,7 @@ export async function getWeatherInfo(
   if (USE_MOCK) {
     // 模拟网络延迟
     await new Promise((resolve) => setTimeout(resolve, 300))
-    return { ...MOCK_WEATHER }
+    return generateMockWeather()
   }
 
   if (!longitude || !latitude) {
